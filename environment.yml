@@ -1,0 +1,16 @@
+name: ml
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - matplotlib
+  - shap
+  - xgboost
+  - pandas
+  - ipykernel
+  - seaborn
+  - scikit-learn
+  - imbalanced-learn
+  - jupyter
+  - numpy
+prefix: C:\Users\javic\miniconda3\envs\ml
