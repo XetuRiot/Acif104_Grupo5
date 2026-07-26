@@ -1,6 +1,7 @@
 name: ml
 channels:
   - defaults
+  - conda-forge
 dependencies:
   - python=3.12
   - matplotlib
@@ -9,8 +10,10 @@ dependencies:
   - pandas
   - ipykernel
   - seaborn
-  - scikit-learn
+  - scikit-learn=1.5
   - imbalanced-learn
   - jupyter
   - numpy
+  - numba=0.61
+  - llvmlite
 prefix: C:\Users\javic\miniconda3\envs\ml
