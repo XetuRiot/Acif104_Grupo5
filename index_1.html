@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PERFECTIME — Sistema Inteligente de Mantenimiento Predictivo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6F9;
+  --sidebar:#0B2545;
+  --sidebar-active:#173A66;
+  --sidebar-text:#B8C4D9;
+  --primary:#1D6FE0;
+  --primary-dark:#155BC0;
+  --success:#2E9E5B;
+  --success-bg:#E4F6EA;
+  --danger:#E13B3B;
+  --danger-bg:#FDEBEB;
+  --warning:#F2994A;
+  --warning-bg:#FFF1E3;
+  --info-bg:#E4EEFC;
+  --text:#1F2937;
+  --text-secondary:#6B7280;
+  --card-radius:12px;
+  --card-shadow:0 1px 3px rgba(0,0,0,0.08);
+  --card-shadow-hover:0 6px 16px rgba(11,37,69,0.12);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  font-size:14px;
+  margin:0;
+}
+a{text-decoration:none;}
+
+/* ---------- LAYOUT ---------- */
+.app-layout{display:flex; min-height:100vh;}
+.sidebar{
+  width:240px; min-width:240px; background:var(--sidebar); color:#fff;
+  display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  transition:width .2s ease, min-width .2s ease;
+  z-index:50;
+}
+.sidebar.collapsed{width:72px; min-width:72px;}
+.sidebar-brand{
+  display:flex; align-items:center; gap:10px; padding:20px 20px; height:64px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.sidebar-brand .brand-icon{
+  width:34px; height:34px; border-radius:8px; background:var(--primary);
+  display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;
+}
+.sidebar-brand .brand-text{font-weight:700; font-size:16px; letter-spacing:.3px; white-space:nowrap; overflow:hidden;}
+.sidebar.collapsed .brand-text, .sidebar.collapsed .nav-text, .sidebar.collapsed .user-meta{display:none;}
+.sidebar-toggle{
+  background:transparent; border:none; color:var(--sidebar-text); cursor:pointer; margin-left:auto; font-size:18px;
+}
+.sidebar-nav{flex:1; padding:16px 12px; overflow-y:auto;}
+.nav-item{
+  display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:8px; color:var(--sidebar-text);
+  cursor:pointer; margin-bottom:4px; font-size:14px; font-weight:500; border-left:4px solid transparent; white-space:nowrap;
+  transition:background .15s ease, color .15s ease;
+}
+.nav-item .nav-icon{width:20px; text-align:center; flex-shrink:0;}
+.nav-item:hover{background:rgba(255,255,255,0.06); color:#fff;}
+.nav-item.active{background:var(--sidebar-active); color:#fff; border-left-color:#4FA3FF;}
+.sidebar-footer{
+  padding:16px 14px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px;
+}
+.avatar-circle{
+  width:36px; height:36px; border-radius:50%; background:var(--primary); display:flex; align-items:center;
+  justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;
+}
+.user-meta{overflow:hidden;}
+.user-meta .u-name{font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.user-meta .u-role{font-size:11px; color:var(--sidebar-text); white-space:nowrap;}
+.sidebar-footer-links{padding:0 14px 16px 14px; display:flex; flex-direction:column; gap:2px;}
+.sidebar-footer-links .nav-item{font-size:13px; padding:8px 14px;}
+
+.main-wrap{flex:1; display:flex; flex-direction:column; min-width:0;}
+.topbar{
+  height:64px; background:#fff; border-bottom:1px solid #E5E7EB; display:flex; align-items:center;
+  padding:0 24px; gap:16px; position:sticky; top:0; z-index:40;
+}
+.topbar .tb-title{font-weight:700; font-size:15px; color:var(--text);}
+.topbar .tb-search{
+  flex:1; max-width:320px; background:var(--bg); border-radius:8px; padding:8px 14px; display:flex; align-items:center;
+  gap:8px; color:var(--text-secondary); font-size:13px;
+}
+.topbar .tb-icons{display:flex; align-items:center; gap:18px; margin-left:auto;}
+.tb-icon-btn{
+  position:relative; background:transparent; border:none; font-size:18px; color:var(--text-secondary); cursor:pointer;
+}
+.tb-badge-dot{
+  position:absolute; top:-2px; right:-2px; width:8px; height:8px; background:var(--danger); border-radius:50%;
+  border:2px solid #fff;
+}
+.content-area{padding:32px; flex:1; min-width:0; max-width:100%;}
+@media (max-width:640px){ .content-area{padding:16px;} }
+
+/* ---------- RESPONSIVE: sidebar como panel deslizante en móvil/tablet ---------- */
+.sidebar-overlay{position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:45; display:none;}
+.sidebar-overlay.show{display:block;}
+@media (max-width:768px){
+  .sidebar{position:fixed; top:0; left:0; height:100vh; transform:translateX(-100%); box-shadow:8px 0 24px rgba(0,0,0,.2); z-index:60;}
+  .sidebar.mobile-open{transform:translateX(0);}
+  .topbar .tb-search{display:none !important;}
+  #mobileToggle{display:inline-flex !important;}
+}
+@media (min-width:769px){ #mobileToggle{display:none !important;} }
+
+.screen{display:none;}
+.screen.active{display:block; animation:fadeInUp .25s ease;}
+@keyframes fadeInUp{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+/* ---------- HEADER DE SECCION ---------- */
+.section-header{
+  display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;
+}
+.section-header h1{font-size:24px; font-weight:700; margin:0;}
+.section-header .section-sub{font-size:13px; color:var(--text-secondary); margin-top:2px;}
+
+/* ---------- CARDS ---------- */
+.card-p{
+  background:#fff; border-radius:var(--card-radius); box-shadow:var(--card-shadow); padding:20px; border:none;
+}
+.grid{display:grid; gap:24px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-8-4{grid-template-columns:2fr 1fr;}
+.grid-7-5{grid-template-columns:7fr 5fr;}
+.grid-5-7{grid-template-columns:5fr 7fr;}
+.grid-6-6{grid-template-columns:1fr 1fr;}
+@media (max-width:1024px){
+  .grid-4{grid-template-columns:repeat(2,1fr);}
+  .grid-8-4, .grid-7-5, .grid-5-7, .grid-6-6{grid-template-columns:1fr;}
+}
+@media (max-width:640px){ .grid-4{grid-template-columns:1fr;} }
+
+/* KPI CARD */
+.kpi-card{height:120px; display:flex; align-items:center; gap:14px; transition:box-shadow .15s ease, transform .15s ease; position:relative;}
+.kpi-card:hover{box-shadow:var(--card-shadow-hover); transform:translateY(-2px);}
+.kpi-icon{
+  width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;
+}
+.kpi-value{font-size:30px; font-weight:700; line-height:1;}
+.kpi-label{font-size:12.5px; color:var(--text-secondary); margin-top:4px;}
+.kpi-variation{position:absolute; top:14px; right:16px; font-size:11px; font-weight:600;}
+.kpi-variation.up{color:var(--success);}
+.kpi-variation.down{color:var(--danger);}
+.pulse-dot{animation:pulseOpacity 2s ease-in-out infinite;}
+@keyframes pulseOpacity{0%,100%{opacity:1;} 50%{opacity:.55;}}
+
+/* BADGES */
+.badge-status{
+  display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; color:#fff;
+  white-space:nowrap;
+}
+.badge-status.success{background:var(--success);}
+.badge-status.warning{background:var(--warning);}
+.badge-status.danger{background:var(--danger);}
+.badge-status.neutral{background:#94A3B8;}
+.badge-status.lg{font-size:18px; padding:10px 22px;}
+.badge-soft{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:6px; font-size:11.5px; font-weight:600;
+}
+.badge-soft.blue{background:var(--info-bg); color:var(--primary);}
+.badge-soft.grey{background:#F1F5F9; color:#475569;}
+
+/* BUTTONS */
+.btn-primary-p{
+  background:var(--primary); border:none; color:#fff; font-weight:600; font-size:13.5px; padding:9px 18px; border-radius:8px;
+  display:inline-flex; align-items:center; gap:8px; transition:background .15s ease;
+}
+.btn-primary-p:hover{background:var(--primary-dark); color:#fff;}
+.btn-primary-p:disabled{background:#CBD5E1; cursor:not-allowed; color:#fff;}
+.btn-secondary-p{
+  background:#fff; border:1px solid var(--primary); color:var(--primary); font-weight:600; font-size:13.5px; padding:8px 17px;
+  border-radius:8px; display:inline-flex; align-items:center; gap:8px; transition:background .15s ease;
+}
+.btn-secondary-p:hover{background:var(--info-bg); color:var(--primary);}
+.btn-ghost-p{
+  background:transparent; border:none; color:var(--text-secondary); font-weight:600; font-size:13.5px; padding:8px 14px;
+}
+.btn-ghost-p:hover{color:var(--text);}
+.btn-link-p{background:none; border:none; color:var(--primary); font-weight:600; font-size:13px;}
+
+/* TABLES */
+.table-p{width:100%; border-collapse:collapse; font-size:13.5px;}
+.table-p thead th{
+  background:#F9FAFB; color:#64748B; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; font-weight:700;
+  padding:11px 14px; text-align:left; border-bottom:1px solid #EEF1F5; cursor:default; white-space:nowrap;
+}
+.table-p thead th.sortable{cursor:pointer;}
+.table-p thead th.sortable:hover{color:var(--primary);}
+.table-p tbody td{padding:12px 14px; border-bottom:1px solid #F1F3F6; vertical-align:middle;}
+.table-p tbody tr{transition:background .1s ease; cursor:pointer;}
+.table-p tbody tr:hover{background:#F9FAFB;}
+.table-p tbody tr:last-child td{border-bottom:none;}
+.mini-progress{width:60px; height:4px; border-radius:4px; background:#EEF1F5; overflow:hidden; margin-top:4px;}
+.mini-progress-fill{height:100%; border-radius:4px;}
+
+/* SKELETON */
+.skeleton{
+  background:linear-gradient(90deg,#EAECF0 25%,#F4F5F7 37%,#EAECF0 63%); background-size:400% 100%;
+  animation:shimmer 1.2s ease-in-out infinite; border-radius:8px;
+}
+@keyframes shimmer{0%{background-position:100% 0;} 100%{background-position:0 0;}}
+
+/* TOASTS */
+#toast-container{position:fixed; top:20px; right:20px; z-index:2000; display:flex; flex-direction:column; gap:10px; width:340px;}
+.toast-p{
+  background:#fff; border-radius:10px; box-shadow:0 8px 24px rgba(15,23,42,.15); padding:13px 16px; display:flex;
+  align-items:flex-start; gap:10px; border-left:4px solid var(--primary); animation:toastIn .2s ease;
+  font-size:13px;
+}
+.toast-p.success{border-left-color:var(--success);}
+.toast-p.error{border-left-color:var(--danger);}
+.toast-p.warning{border-left-color:var(--warning);}
+@keyframes toastIn{from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:translateX(0);}}
+.toast-close{margin-left:auto; background:none; border:none; color:#94A3B8; cursor:pointer; font-size:14px;}
+
+/* BANNERS / MENSAJES */
+.banner{
+  display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:10px; font-size:13.5px; font-weight:500;
+  margin-bottom:20px; border-left:4px solid;
+}
+.banner.danger{background:var(--danger-bg); border-color:var(--danger); color:#7A1F1F;}
+.banner.warning{background:var(--warning-bg); border-color:var(--warning); color:#7A4A12;}
+.banner.success{background:var(--success-bg); border-color:var(--success); color:#1D5C38;}
+.banner a, .banner .banner-link{color:inherit; font-weight:700; text-decoration:underline; cursor:pointer;}
+
+/* STEPPER */
+.stepper{display:flex; align-items:center; margin-bottom:24px;}
+.step{display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; flex:1;}
+.step-circle{
+  width:32px; height:32px; border-radius:50%; background:#E5E7EB; color:#9CA3AF; display:flex; align-items:center;
+  justify-content:center; font-weight:700; font-size:13px; transition:all .25s ease; z-index:2;
+}
+.step-label{font-size:11.5px; color:#9CA3AF; font-weight:600; white-space:nowrap;}
+.step.active .step-circle{background:var(--primary); color:#fff; box-shadow:0 0 0 4px rgba(29,111,224,.15);}
+.step.active .step-label{color:var(--primary);}
+.step.done .step-circle{background:var(--success); color:#fff;}
+.step.done .step-label{color:var(--success);}
+.step-line{position:absolute; top:16px; left:-50%; width:100%; height:2px; background:#E5E7EB; z-index:1;}
+.step:first-child .step-line{display:none;}
+.step.done .step-line, .step.active .step-line{background:var(--success);}
+
+/* DROPZONE */
+.dropzone{
+  border:2px dashed #CBD5E1; border-radius:16px; background:#fff; max-width:720px; margin:0 auto; padding:48px 24px;
+  text-align:center; transition:all .15s ease; cursor:pointer;
+}
+.dropzone.dragover{border-color:var(--primary); background:var(--info-bg);}
+.dropzone .dz-icon{font-size:52px; color:#8FB3EE; margin-bottom:12px;}
+.dropzone.dragover .dz-icon{color:var(--primary);}
+.dz-title{font-size:16px; font-weight:600; margin-bottom:4px;}
+.dz-sub{font-size:13.5px; color:var(--primary); text-decoration:underline; margin-bottom:14px;}
+.dz-help{font-size:12px; color:#94A3B8;}
+
+.file-card{
+  max-width:720px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:var(--card-shadow); padding:16px 18px;
+  display:flex; align-items:center; gap:14px;
+}
+.file-card .fc-icon{width:44px; height:44px; border-radius:10px; background:var(--success-bg); color:var(--success);
+  display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;}
+.fc-progress{width:100%; height:5px; background:#EEF1F5; border-radius:5px; overflow:hidden; margin-top:6px;}
+.fc-progress-fill{height:100%; background:var(--primary); border-radius:5px; transition:width .2s ease;}
+.fc-remove{margin-left:auto; width:28px; height:28px; border-radius:50%; border:none; background:#F1F3F6; color:#64748B; flex-shrink:0;}
+
+/* GAUGE */
+.gauge-wrap{position:relative; width:240px; height:140px; margin:0 auto;}
+.gauge-needle{
+  position:absolute; bottom:0; left:50%; width:3px; height:96px; background:var(--text); transform-origin:bottom center;
+  transform:translateX(-50%) rotate(-90deg); transition:transform .8s cubic-bezier(.2,.9,.3,1); border-radius:3px;
+}
+.gauge-needle::after{content:''; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%); width:16px; height:16px;
+  background:var(--text); border-radius:50%;}
+.gauge-value{position:absolute; bottom:-6px; left:0; right:0; text-align:center; font-size:26px; font-weight:700;}
+
+/* PREDICT FORM */
+.field-group{margin-bottom:18px;}
+.field-label{font-size:12.5px; color:var(--text-secondary); font-weight:600; margin-bottom:6px; display:block;}
+.field-input-row{display:flex; align-items:center; gap:8px;}
+.stepper-btn{width:34px; height:38px; border:1px solid #E2E8F0; background:#F9FAFB; border-radius:8px; font-weight:700; color:var(--text-secondary); flex-shrink:0;}
+.field-input{flex:1; height:38px; border:1px solid #E2E8F0; border-radius:8px; padding:0 10px; font-size:13.5px; text-align:center;}
+.field-input:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(29,111,224,.12);}
+.field-input.is-warning{border-color:var(--warning);}
+.field-input.is-invalid{border-color:var(--danger);}
+.field-hint{font-size:11px; color:var(--warning); margin-top:4px;}
+.field-range{width:100%; margin-top:6px;}
+.result-empty{display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:480px; color:#B9C2CF; text-align:center;}
+.result-empty .re-icon{font-size:64px; margin-bottom:14px;}
+
+/* WATERFALL / SHAP */
+.legend-strip{display:flex; align-items:center; gap:24px; font-size:12.5px; color:var(--text-secondary); padding:8px 4px; margin-bottom:16px;}
+.legend-dot{width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:6px;}
+.shap-factor-item{display:flex; align-items:flex-start; gap:10px; padding:12px 0; border-bottom:1px solid #F1F3F6;}
+.shap-factor-item:last-child{border-bottom:none;}
+.shap-ico{width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; color:#fff; font-weight:700;}
+.shap-ico.up{background:var(--danger);}
+.shap-ico.down{background:var(--success);}
+.confidence-bar{display:inline-flex; gap:2px; vertical-align:middle; margin-left:6px;}
+.confidence-bar span{width:6px; height:12px; border-radius:2px; background:#E5E7EB;}
+.confidence-bar span.filled{background:var(--primary);}
+
+/* DRAWER */
+.drawer-overlay{position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:1500; display:none;}
+.drawer-overlay.show{display:block;}
+.drawer{
+  position:fixed; top:0; right:-420px; width:400px; max-width:92vw; height:100vh; background:#fff; z-index:1600;
+  box-shadow:-8px 0 24px rgba(0,0,0,.15); transition:right .25s ease; padding:24px; overflow-y:auto;
+}
+.drawer.show{right:0;}
+
+/* MISC */
+.empty-state{text-align:center; padding:60px 20px; color:#94A3B8;}
+.empty-state .es-icon{font-size:48px; margin-bottom:12px;}
+.chart-card-title{font-size:15.5px; font-weight:700; margin-bottom:4px;}
+.chart-card-sub{font-size:12px; color:var(--text-secondary); margin-bottom:14px;}
+.card-title-row{display:flex; align-items:center; justify-content:between; justify-content:space-between; margin-bottom:14px;}
+.card-title-row h6{margin:0; font-size:15.5px; font-weight:700;}
+.filters-bar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fff; border-radius:12px; box-shadow:var(--card-shadow); padding:14px 18px; margin-bottom:20px;}
+.filters-bar select, .filters-bar input{
+  border:1px solid #E2E8F0; border-radius:8px; padding:8px 12px; font-size:13px; background:#fff; color:var(--text);
+}
+.filters-bar input.search-input{min-width:230px;}
+.form-select-sm-p, .form-control-sm-p{border:1px solid #E2E8F0; border-radius:8px; padding:7px 10px; font-size:13px;}
+.alert-list-item{display:flex; align-items:flex-start; gap:12px; padding:14px 4px; border-bottom:1px solid #F1F3F6;}
+.alert-list-item:last-child{border-bottom:none;}
+.severity-dot{width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:14px; color:#fff;}
+.recent-alert-item{display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid #F1F3F6; cursor:pointer; border-radius:8px;}
+.recent-alert-item:hover{background:#F9FAFB;}
+.recent-alert-item:last-child{border-bottom:none;}
+.ra-badge{width:32px; height:32px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;}
+.pagination-p{display:flex; align-items:center; justify-content:space-between; padding:14px 4px 4px 4px; font-size:12.5px; color:var(--text-secondary); flex-wrap:wrap; gap:10px;}
+.pagination-p .pg-controls{display:flex; gap:4px;}
+.pg-btn{width:30px; height:30px; border:1px solid #E2E8F0; background:#fff; border-radius:6px; font-size:12.5px; color:var(--text-secondary);}
+.pg-btn.active{background:var(--primary); color:#fff; border-color:var(--primary);}
+.overlay-loading{position:absolute; inset:0; background:rgba(255,255,255,.7); display:flex; align-items:center; justify-content:center; border-radius:12px; z-index:5;}
+.table-wrap{position:relative; overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%;}
+.table-wrap .table-p{min-width:620px;}
+@media (max-width:640px){ .table-wrap .table-p{min-width:720px;} }
+.dropdown-menu-p{position:absolute; background:#fff; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:6px; min-width:220px; z-index:100; display:none;}
+.dropdown-menu-p.show{display:block;}
+.dropdown-menu-p button{width:100%; text-align:left; background:none; border:none; padding:9px 12px; border-radius:6px; font-size:13.5px; display:flex; align-items:center; gap:8px;}
+.dropdown-menu-p button:hover{background:#F1F5F9;}
+.spin{display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite;}
+.spin.dark{border:2px solid #E2E8F0; border-top-color:var(--primary);}
+@keyframes spin{to{transform:rotate(360deg);}}
+.count-anim{transition:none;}
+.hover-elevate{transition:box-shadow .15s ease, transform .15s ease;}
+.hover-elevate:hover{box-shadow:var(--card-shadow-hover); transform:translateY(-2px);}
+.section-scroll::-webkit-scrollbar{width:6px; height:6px;}
+.section-scroll::-webkit-scrollbar-thumb{background:#D9DEE5; border-radius:6px;}
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- ======================= SIDEBAR ======================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">⚙</div>
+      <div class="brand-text">PERFECTIME</div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Colapsar menú">☰</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-screen="dashboard"><span class="nav-icon">🏠</span><span class="nav-text">Panel principal</span></div>
+      <div class="nav-item" data-screen="upload"><span class="nav-icon">📤</span><span class="nav-text">Cargar archivo CSV</span></div>
+      <div class="nav-item" data-screen="predict"><span class="nav-icon">🎯</span><span class="nav-text">Predicción individual</span></div>
+      <div class="nav-item" data-screen="shap"><span class="nav-icon">🔍</span><span class="nav-text">Explicabilidad SHAP</span></div>
+      <div class="nav-item" data-screen="monitor"><span class="nav-icon">📡</span><span class="nav-text">Monitoreo</span></div>
+      <div class="nav-item" data-screen="history"><span class="nav-icon">🕓</span><span class="nav-text">Historial</span></div>
+    </nav>
+    <div class="sidebar-footer-links">
+      <div class="nav-item" style="cursor:default;"><span class="nav-icon">➕</span><span class="nav-text">Configurar sensores</span></div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar-circle">MR</div>
+      <div class="user-meta">
+        <div class="u-name">Marcelo Rivas</div>
+        <div class="u-role">Supervisor de mantenimiento</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <!-- ======================= TOPBAR ======================= -->
+    <header class="topbar">
+      <button class="tb-icon-btn" id="mobileToggle" title="Abrir menú" style="display:none;">☰</button>
+      <div class="tb-title" id="topbarTitle">Panel principal</div>
+      <div class="tb-search d-none d-md-flex">🔎 <span>Buscar máquina, ID o archivo...</span></div>
+      <div class="tb-icons">
+        <button class="tb-icon-btn" title="Notificaciones">🔔<span class="tb-badge-dot"></span></button>
+        <button class="tb-icon-btn" title="Configuración">⚙️</button>
+        <div class="avatar-circle" style="width:30px;height:30px;font-size:11px;">MR</div>
+      </div>
+    </header>
+
+    <main class="content-area">
+
+      <!-- ======================================================= -->
+      <!-- PANTALLA 1 — PANEL PRINCIPAL -->
+      <!-- ======================================================= -->
+      <section class="screen active" id="screen-dashboard">
+        <div class="section-header">
+          <div>
+            <h1>Panel principal</h1>
+            <div class="section-sub" id="dashUpdatedText">Resumen general del sistema — Actualizado hace 2 min</div>
+          </div>
+          <div style="position:relative;">
+            <button class="btn-primary-p" id="btnNewPrediction">➕ Nueva predicción</button>
+            <div class="dropdown-menu-p" id="newPredictionMenu">
+              <button data-goto="upload">📤 Cargar archivo CSV</button>
+              <button data-goto="predict">🎯 Predicción individual</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="dashAlertBanner"></div>
+
+        <!-- KPI ROW -->
+        <div class="grid grid-4" id="dashKpiRow" style="margin-bottom:24px;"></div>
+
+        <!-- CHARTS ROW -->
+        <div class="grid grid-8-4" style="margin-bottom:24px;">
+          <div class="card-p" style="position:relative;">
+            <div class="card-title-row">
+              <div>
+                <h6>Tendencia de riesgo de falla</h6>
+                <div class="chart-card-sub" style="margin-bottom:0;">Últimos 30 días — riesgo promedio de todas las máquinas activas</div>
+              </div>
+              <select class="form-select-sm-p" id="trendRangeSelect">
+                <option value="7">7 días</option>
+                <option value="30" selected>30 días</option>
+                <option value="90">90 días</option>
+              </select>
+            </div>
+            <div id="trendChartLoading" class="skeleton" style="height:300px; display:none;"></div>
+            <div style="height:300px;"><canvas id="trendChart"></canvas></div>
+          </div>
+
+          <div class="card-p" style="display:flex; flex-direction:column;">
+            <div class="card-title-row">
+              <h6>Alertas recientes</h6>
+              <span class="badge-soft blue" id="recentAlertCount">3</span>
+            </div>
+            <div id="recentAlertsList" class="section-scroll" style="flex:1; overflow-y:auto; max-height:300px;"></div>
+          </div>
+        </div>
+
+        <!-- TOP 5 RISK BAR CHART -->
+        <div class="card-p" style="margin-bottom:24px;">
+          <h6 style="margin-bottom:2px;">Top 5 máquinas con mayor riesgo actual</h6>
+          <div class="chart-card-sub">Haz clic en una barra para ver el historial de esa máquina</div>
+          <div style="height:230px;"><canvas id="topRiskChart"></canvas></div>
+        </div>
+
+        <!-- SUMMARY TABLE -->
+        <div class="card-p">
+          <div class="card-title-row">
+            <h6>Últimas predicciones</h6>
+            <button class="btn-link-p" data-goto="history">Ver historial completo →</button>
+          </div>
+          <div class="table-wrap">
+            <table class="table-p">
+              <thead><tr><th>Máquina</th><th>Sensor</th><th>Fecha</th><th>Predicción</th><th>Probabilidad</th><th>Estado</th></tr></thead>
+              <tbody id="dashSummaryTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- PANTALLA 2 — CARGAR ARCHIVO CSV -->
+      <!-- ======================================================= -->
+      <section class="screen" id="screen-upload">
+        <div class="section-header">
+          <div>
+            <h1>Cargar archivo CSV</h1>
+            <div class="section-sub">Sube los datos de tus sensores para generar predicciones</div>
+          </div>
+        </div>
+
+        <div class="stepper" id="uploadStepper">
+          <div class="step active" data-step="1"><div class="step-line"></div><div class="step-circle">1</div><div class="step-label">Subir archivo</div></div>
+          <div class="step" data-step="2"><div class="step-line"></div><div class="step-circle">2</div><div class="step-label">Validar datos</div></div>
+          <div class="step" data-step="3"><div class="step-line"></div><div class="step-circle">3</div><div class="step-label">Analizar</div></div>
+          <div class="step" data-step="4"><div class="step-line"></div><div class="step-circle">4</div><div class="step-label">Ver resultados</div></div>
+        </div>
+
+        <div id="uploadDropzoneWrap">
+          <div class="dropzone" id="dropzone">
+            <div class="dz-icon">☁️</div>
+            <div class="dz-title">Arrastra tu archivo CSV aquí</div>
+            <div class="dz-sub">o haz clic para seleccionar desde tu computador</div>
+            <div class="dz-help">Formatos aceptados: .csv — Tamaño máximo: 20 MB</div>
+          </div>
+          <input type="file" id="fileInput" accept=".csv" style="display:none;">
+          <div style="text-align:center; margin-top:20px;">
+            <button class="btn-secondary-p" id="btnDownloadTemplate">📄 Descargar plantilla de ejemplo</button>
+          </div>
+        </div>
+
+        <div id="uploadFileCardWrap" style="display:none; margin-top:8px;">
+          <div class="file-card">
+            <div class="fc-icon">📄</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; font-size:13.5px;" id="fcFileName">sensores_planta_a.csv</div>
+              <div style="font-size:12px; color:var(--text-secondary);" id="fcFileMeta">2.4 MB</div>
+              <div class="fc-progress"><div class="fc-progress-fill" id="fcProgressFill" style="width:0%;"></div></div>
+            </div>
+            <button class="fc-remove" id="btnRemoveFile">✕</button>
+          </div>
+        </div>
+
+        <div id="uploadMessages" style="max-width:720px; margin:16px auto 0 auto;"></div>
+
+        <div id="previewSection" style="display:none; margin-top:24px;">
+          <div class="card-p" style="position:relative;">
+            <div class="card-title-row">
+              <div>
+                <h6>Vista previa de datos</h6>
+                <div class="chart-card-sub" style="margin-bottom:0;" id="previewSubtitle">Mostrando 8 de 1,204 registros</div>
+              </div>
+            </div>
+            <div id="previewWarningBanner"></div>
+            <div class="table-wrap" style="max-height:320px; overflow:auto;">
+              <table class="table-p">
+                <thead id="previewTableHead"></thead>
+                <tbody id="previewTableBody"></tbody>
+              </table>
+            </div>
+            <div id="analyzingOverlay" class="overlay-loading" style="display:none;">
+              <div style="text-align:center;">
+                <div class="spin dark" style="width:32px;height:32px; margin:0 auto 10px auto;"></div>
+                <div style="font-weight:600; font-size:13.5px;">Analizando datos... esto puede tardar unos segundos.</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:18px;">
+            <button class="btn-ghost-p" id="btnCancelUpload">Cancelar</button>
+            <button class="btn-primary-p" id="btnAnalyzeData">⚡ Analizar datos</button>
+          </div>
+        </div>
+
+        <div id="analysisSuccessBanner" style="display:none; max-width:720px; margin:24px auto 0 auto;"></div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- PANTALLA 3 — PREDICCIÓN INDIVIDUAL -->
+      <!-- ======================================================= -->
+      <section class="screen" id="screen-predict">
+        <div class="section-header">
+          <div>
+            <h1>Predicción individual</h1>
+            <div class="section-sub">Ingresa los valores de los sensores para evaluar un caso puntual</div>
+          </div>
+        </div>
+
+        <div class="grid grid-5-7">
+          <div class="card-p">
+            <h6 style="margin-bottom:16px;">Datos del sensor</h6>
+            <div style="display:flex; gap:12px; margin-bottom:18px;">
+              <div style="flex:1;">
+                <label class="field-label">Tipo de máquina</label>
+                <select class="form-select-sm-p" style="width:100%;" id="pMachineType">
+                  <option>Compresor</option><option>Motor eléctrico</option><option>Bomba centrífuga</option><option>Turbina</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label class="field-label">Sensor / línea</label>
+                <select class="form-select-sm-p" style="width:100%;" id="pSensorLine">
+                  <option>Línea A</option><option>Línea B</option><option>Línea C</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="predictFormFields"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+              <button class="btn-ghost-p" id="btnClearForm">Limpiar formulario</button>
+              <button class="btn-primary-p" id="btnPredict">⚡ Predecir</button>
+            </div>
+            <div id="predictValidationMsg" style="display:none; color:var(--danger); font-size:12.5px; text-align:right; margin-top:8px; font-weight:600;">Completa todos los campos para continuar.</div>
+          </div>
+
+          <div class="card-p" id="predictResultCard" style="min-height:600px; display:flex; flex-direction:column; justify-content:center;">
+            <div class="result-empty" id="predictEmptyState">
+              <div class="re-icon">📊</div>
+              <div>Completa el formulario y presiona <strong>Predecir</strong> para ver el resultado</div>
+            </div>
+            <div id="predictLoadingState" style="display:none;">
+              <div class="skeleton" style="height:60px; width:60%; margin:0 auto 20px auto;"></div>
+              <div class="skeleton" style="height:140px; width:240px; margin:0 auto 20px auto; border-radius:50%;"></div>
+              <div class="skeleton" style="height:80px; width:90%; margin:0 auto;"></div>
+            </div>
+            <div id="predictResultState" style="display:none;">
+              <div style="text-align:center; margin-bottom:6px;">
+                <span class="badge-status lg" id="predictBadge">Falla</span>
+                <div style="font-size:24px; font-weight:700; margin-top:14px;" id="predictProbText">Probabilidad de falla: 83%</div>
+              </div>
+              <div class="gauge-wrap" style="margin-top:24px;">
+                <canvas id="gaugeChart"></canvas>
+                <div class="gauge-needle" id="gaugeNeedle"></div>
+                <div class="gauge-value" id="gaugeValueText">83%</div>
+              </div>
+              <div style="margin-top:28px; padding-top:16px; border-top:1px solid #F1F3F6;">
+                <div style="font-size:12.5px; color:var(--text-secondary); font-weight:600; margin-bottom:8px;">Resumen rápido de factores</div>
+                <div id="predictFactorSummary" style="display:flex; align-items:center; gap:8px; font-size:13.5px; margin-bottom:16px;"></div>
+                <button class="btn-secondary-p" style="width:100%; justify-content:center;" id="btnGoShapFromPredict">Ver explicación completa (SHAP) →</button>
+              </div>
+            </div>
+            <div id="predictErrorState" style="display:none; text-align:center;">
+              <div style="font-size:40px; margin-bottom:10px;">❌</div>
+              <div style="font-weight:600; margin-bottom:12px;">No se pudo calcular la predicción. Intenta nuevamente.</div>
+              <button class="btn-secondary-p" id="btnRetryPredict">Reintentar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- PANTALLA 4 — EXPLICABILIDAD SHAP -->
+      <!-- ======================================================= -->
+      <section class="screen" id="screen-shap">
+        <div class="section-header">
+          <div>
+            <h1>Explicabilidad SHAP</h1>
+            <div class="section-sub">Comprende qué variables influyeron en cada predicción</div>
+          </div>
+          <div>
+            <select class="form-select-sm-p" id="shapCaseSelect" style="min-width:260px;"></select>
+          </div>
+        </div>
+
+        <div id="shapConfidenceBanner"></div>
+
+        <div class="card-p" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:14px;">
+          <div>
+            <div style="font-weight:700; font-size:16px;" id="shapMachineName">Compresor 04</div>
+            <div style="font-size:12px; color:var(--text-secondary);" id="shapCaseMeta">ID #00483 — 27 jul 2026, 14:32</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="badge-status danger" id="shapResultBadge">Falla</span>
+            <span style="font-weight:700; font-size:15px;" id="shapProbText">83%</span>
+          </div>
+          <div style="font-size:12.5px; color:var(--text-secondary);">
+            Confianza: <strong id="shapConfidenceText">Alta</strong>
+            <span class="confidence-bar" id="shapConfidenceBar"></span>
+          </div>
+        </div>
+
+        <div class="legend-strip">
+          <span><span class="legend-dot" style="background:var(--danger);"></span>Aumenta el riesgo</span>
+          <span><span class="legend-dot" style="background:var(--success);"></span>Reduce el riesgo</span>
+        </div>
+
+        <div class="grid grid-7-5">
+          <div class="card-p">
+            <h6 style="margin-bottom:2px;">Impacto de cada variable en la predicción</h6>
+            <div class="chart-card-sub">Base: <span id="shapBaseVal">20%</span> → Predicción final: <span id="shapFinalVal">83%</span></div>
+            <div style="height:340px;"><canvas id="shapWaterfallChart"></canvas></div>
+          </div>
+          <div class="card-p" style="max-height:420px; overflow-y:auto;">
+            <h6 style="margin-bottom:6px;">¿Por qué el sistema predice esto?</h6>
+            <div id="shapFactorList"></div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:20px;">
+          <button class="btn-secondary-p" id="btnCompareCase">🔄 Comparar con otro caso</button>
+          <button class="btn-secondary-p" id="btnExportShap">⬇ Exportar explicación (PDF)</button>
+        </div>
+
+        <div id="shapCompareWrap" style="display:none; margin-top:24px;">
+          <div class="card-title-row">
+            <h6>Comparación de casos</h6>
+            <button class="btn-ghost-p" id="btnCloseCompare">✕ Cerrar comparación</button>
+          </div>
+          <div class="grid grid-6-6">
+            <div class="card-p">
+              <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">Caso A</div>
+              <div id="compareCaseA_meta" style="font-weight:600; margin-bottom:10px;"></div>
+              <div style="height:260px;"><canvas id="compareChartA"></canvas></div>
+            </div>
+            <div class="card-p">
+              <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">Caso B</div>
+              <select class="form-select-sm-p" id="compareCaseBSelect" style="width:100%; margin-bottom:10px;"></select>
+              <div style="height:260px;"><canvas id="compareChartB"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- PANTALLA 5 — MONITOREO -->
+      <!-- ======================================================= -->
+      <section class="screen" id="screen-monitor">
+        <div class="section-header">
+          <div>
+            <h1>Monitoreo</h1>
+            <div class="section-sub">Salud del sistema y desempeño del modelo</div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <select class="form-select-sm-p" id="monitorRange">
+              <option value="7">Últimos 7 días</option>
+              <option value="30" selected>Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+            </select>
+            <select class="form-select-sm-p" id="monitorMachineType">
+              <option>Todas las máquinas</option><option>Compresor</option><option>Motor eléctrico</option><option>Bomba centrífuga</option><option>Turbina</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="monitorAccuracyBanner"></div>
+
+        <div class="grid grid-4" style="margin-bottom:24px;" id="monitorKpiRow"></div>
+
+        <div class="grid grid-6-6" style="margin-bottom:24px;">
+          <div class="card-p">
+            <h6 style="margin-bottom:2px;">Precisión del modelo en el tiempo</h6>
+            <div class="chart-card-sub">Línea punteada gris = umbral mínimo aceptable (90%)</div>
+            <div style="height:280px;"><canvas id="precisionChart"></canvas></div>
+          </div>
+          <div class="card-p">
+            <h6 style="margin-bottom:2px;">Tiempo de respuesta por análisis</h6>
+            <div class="chart-card-sub">Barras naranjas = análisis que excedieron el umbral esperado (3s)</div>
+            <div style="height:280px;"><canvas id="responseChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card-p" style="margin-bottom:24px;">
+          <div class="card-title-row">
+            <h6>Archivos procesados</h6>
+            <input type="text" class="form-control-sm-p" id="monitorFileSearch" placeholder="Buscar por nombre de archivo...">
+          </div>
+          <div class="table-wrap">
+            <table class="table-p">
+              <thead><tr><th>Nombre de archivo</th><th>Fecha</th><th>N° de registros</th><th>Estado</th><th>Duración</th></tr></thead>
+              <tbody id="monitorFilesTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card-p">
+          <h6 style="margin-bottom:10px;">Alertas del sistema</h6>
+          <div id="systemAlertsList"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- PANTALLA 6 — HISTORIAL -->
+      <!-- ======================================================= -->
+      <section class="screen" id="screen-history">
+        <div class="section-header">
+          <div>
+            <h1>Historial</h1>
+            <div class="section-sub">Consulta y filtra todas las predicciones realizadas</div>
+          </div>
+          <div style="position:relative;">
+            <button class="btn-secondary-p" id="btnExportHistory">⬇ Exportar historial</button>
+            <div class="dropdown-menu-p" id="exportHistoryMenu">
+              <button id="exportCsvBtn">📄 Exportar como CSV</button>
+              <button id="exportPdfBtn">📕 Exportar como PDF</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="filters-bar">
+          <input type="text" class="search-input" id="histSearch" placeholder="🔎 Buscar por máquina o ID...">
+          <select id="histResultFilter"><option value="">Resultado: Todos</option><option value="No falla">No falla</option><option value="Riesgo medio">Riesgo medio</option><option value="Falla">Falla</option></select>
+          <select id="histTypeFilter"><option value="">Tipo de máquina: Todos</option><option>Compresor</option><option>Motor eléctrico</option><option>Bomba centrífuga</option><option>Turbina</option></select>
+          <select id="histOriginFilter"><option value="">Origen: Todos</option><option value="CSV">CSV</option><option value="Manual">Manual</option></select>
+          <button class="btn-link-p" id="btnClearFilters" style="display:none;">Limpiar filtros</button>
+        </div>
+
+        <div class="card-p table-wrap">
+          <div id="histTableLoadingOverlay" class="overlay-loading" style="display:none;">
+            <div class="spin dark" style="width:28px;height:28px;"></div>
+          </div>
+          <table class="table-p">
+            <thead>
+              <tr>
+                <th>ID</th><th>Máquina</th><th class="sortable" data-sort="fecha">Fecha ⇅</th><th>Origen</th><th>Predicción</th>
+                <th class="sortable" data-sort="prob">Probabilidad ⇅</th><th>Confianza</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody"></tbody>
+          </table>
+          <div id="historyEmptyState" style="display:none;"></div>
+          <div class="pagination-p" id="historyPagination"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="fileDrawer">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h5 style="margin:0; font-weight:700;">Detalle del procesamiento</h5>
+    <button class="fc-remove" id="btnCloseDrawer">✕</button>
+  </div>
+  <div id="drawerContent"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+/* =========================================================================================
+   PERFECTIME — DATOS SIMULADOS Y LÓGICA DE INTERFAZ (sin backend, sin frameworks)
+   ========================================================================================= */
+(function(){
+"use strict";
+
+const COLORS = {primary:'#1D6FE0', success:'#2E9E5B', danger:'#E13B3B', warning:'#F2994A', grid:'#EEF1F5', text:'#6B7280'};
+
+/* ---------- RNG determinista simple para datos simulados reproducibles ---------- */
+let seed = 42;
+function rand(){ seed = (seed*9301+49297) % 233280; return seed/233280; }
+function randInt(min,max){ return Math.floor(rand()*(max-min+1))+min; }
+function pick(arr){ return arr[randInt(0,arr.length-1)]; }
+function roundTo(n,d){ const p=Math.pow(10,d); return Math.round(n*p)/p; }
+
+const MACHINE_NAMES = ['Compresor 01','Compresor 04','Motor B-12','Motor A-07','Bomba C-03','Bomba C-09','Turbina T-02','Turbina T-05',
+  'Compresor 08','Motor D-14','Bomba E-01','Compresor 11','Motor F-06','Turbina T-09','Bomba G-02'];
+const MACHINE_TYPES = ['Compresor','Motor eléctrico','Bomba centrífuga','Turbina'];
+const SENSORS = ['Vibración','Temperatura','Presión','Humedad'];
+
+function statusFromProb(p){ if(p>=67) return 'Falla'; if(p>=34) return 'Riesgo medio'; return 'No falla'; }
+function levelFromStatus(s){ return s==='Falla'?'danger':(s==='Riesgo medio'?'warning':'success'); }
+function statusColor(s){ return s==='Falla'?COLORS.danger:(s==='Riesgo medio'?COLORS.warning:COLORS.success); }
+
+/* ---------- Generación de historial simulado (120 registros) ---------- */
+const HISTORY = [];
+(function genHistory(){
+  const now = new Date(2026,6,27,14,32);
+  for(let i=0;i<120;i++){
+    const prob = randInt(3,98);
+    const status = statusFromProb(prob);
+    const date = new Date(now.getTime() - i*3600*1000*randInt(2,9));
+    HISTORY.push({
+      id: '#'+String(10000+i*3+randInt(1,2)).slice(-5),
+      machine: pick(MACHINE_NAMES),
+      type: pick(MACHINE_TYPES),
+      sensor: pick(SENSORS),
+      date: date,
+      origin: rand()>0.4?'CSV':'Manual',
+      status: status,
+      prob: prob,
+      confidence: prob>80||prob<20 ? 'Alta' : (prob>55||prob<45? 'Media':'Baja')
+    });
+  }
+})();
+
+function fmtDate(d){
+  const months=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function timeAgo(d){
+  const diffMin = Math.round((new Date(2026,6,27,14,32) - d)/60000);
+  if(diffMin<60) return `hace ${diffMin} min`;
+  const h = Math.round(diffMin/60);
+  if(h<24) return `hace ${h} h`;
+  return `hace ${Math.round(h/24)} d`;
+}
+
+/* ---------- Navegación entre pantallas ---------- */
+const screenTitles = {dashboard:'Panel principal', upload:'Cargar archivo CSV', predict:'Predicción individual',
+  shap:'Explicabilidad SHAP', monitor:'Monitoreo', history:'Historial'};
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item[data-screen]').forEach(n=>n.classList.toggle('active', n.dataset.screen===name));
+  document.getElementById('topbarTitle').textContent = screenTitles[name];
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(name==='dashboard') initDashboardCharts();
+  if(name==='monitor') initMonitorCharts();
+  if(name==='shap') { if(!shapInitialized){ populateShapSelect(); shapInitialized=true; } }
+  if(name==='history') renderHistoryTable();
+}
+function closeMobileSidebar(){
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+document.querySelectorAll('.nav-item[data-screen]').forEach(el=>{
+  el.addEventListener('click', ()=>{ showScreen(el.dataset.screen); closeMobileSidebar(); });
+});
+document.querySelectorAll('[data-goto]').forEach(el=>{
+  el.addEventListener('click', ()=>{ showScreen(el.dataset.goto); closeAllDropdowns(); closeMobileSidebar(); });
+});
+
+document.getElementById('sidebarToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+document.getElementById('mobileToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('mobile-open');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+});
+document.getElementById('sidebarOverlay').addEventListener('click', closeMobileSidebar);
+
+/* ---------- Dropdown genérico (Nueva predicción / Exportar historial) ---------- */
+function closeAllDropdowns(){ document.querySelectorAll('.dropdown-menu-p').forEach(d=>d.classList.remove('show')); }
+document.getElementById('btnNewPrediction').addEventListener('click', (e)=>{
+  e.stopPropagation(); const m=document.getElementById('newPredictionMenu'); closeAllDropdowns(); m.classList.toggle('show');
+});
+document.getElementById('btnExportHistory').addEventListener('click', (e)=>{
+  e.stopPropagation(); const m=document.getElementById('exportHistoryMenu'); closeAllDropdowns(); m.classList.toggle('show');
+});
+document.addEventListener('click', closeAllDropdowns);
+
+/* ---------- Sistema de Toasts ---------- */
+function showToast(type, message, persistent){
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast-p '+type;
+  const icon = type==='success'?'✅':(type==='error'?'❌':(type==='warning'?'⚠️':'ℹ️'));
+  el.innerHTML = `<div>${icon}</div><div style="flex:1;">${message}</div><button class="toast-close">✕</button>`;
+  el.querySelector('.toast-close').addEventListener('click', ()=>el.remove());
+  container.appendChild(el);
+  if(!persistent){ setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 4500); }
+}
+
+/* =========================================================================================
+   PANTALLA 1 — PANEL PRINCIPAL
+   ========================================================================================= */
+let dashInitialized = false;
+let trendChartInstance, topRiskChartInstance;
+
+function renderDashboardKPIs(){
+  const activeAlerts = HISTORY.filter(h=>h.status!=='No falla' && h.date > new Date(2026,6,26)).length;
+  const kpis = [
+    {icon:'🖥️', bg:'var(--info-bg)', value:'48', label:'Máquinas monitoreadas', variation:'▲ 2%', up:true},
+    {icon:'🔔', bg: activeAlerts>0?'var(--danger-bg)':'#F1F5F9', value:String(activeAlerts), label:'Alertas activas', variation:null, danger:activeAlerts>0},
+    {icon:'🎯', bg:'var(--success-bg)', value:'94.2%', label:'Precisión del modelo', variation:'▲ 1.1%', up:true},
+    {icon:'📄', bg:'var(--info-bg)', value:'7', label:'Archivos procesados hoy', variation:null}
+  ];
+  const row = document.getElementById('dashKpiRow');
+  row.innerHTML = kpis.map((k,i)=>`
+    <div class="card-p kpi-card">
+      <div class="kpi-icon ${k.danger?'pulse-dot':''}" style="background:${k.bg};">${k.icon}</div>
+      <div>
+        <div class="kpi-value count-target" data-target="${k.value}" style="${k.danger?'color:var(--danger);':''}">0</div>
+        <div class="kpi-label">${k.label}</div>
+      </div>
+      ${k.variation?`<div class="kpi-variation ${k.up?'up':'down'}">${k.variation}</div>`:''}
+    </div>`).join('');
+  // animación count-up
+  row.querySelectorAll('.count-target').forEach(el=>{
+    const target = el.dataset.target;
+    const numMatch = target.match(/[\d.]+/);
+    if(!numMatch){ el.textContent = target; return; }
+    const num = parseFloat(numMatch[0]);
+    const suffix = target.replace(numMatch[0],'');
+    let start=0; const duration=800; const startTime=performance.now();
+    function step(t){
+      const p = Math.min(1,(t-startTime)/duration);
+      const val = (num*p);
+      el.textContent = (num % 1 !== 0 ? val.toFixed(1) : Math.round(val)) + suffix;
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+
+  const banner = document.getElementById('dashAlertBanner');
+  if(activeAlerts>0){
+    banner.innerHTML = `<div class="banner danger">⚠️ ${activeAlerts} máquinas requieren atención inmediata. <span class="banner-link" data-goto="history">Ver alertas →</span></div>`;
+    banner.querySelector('[data-goto]').addEventListener('click', ()=>showScreen('history'));
+  } else { banner.innerHTML=''; }
+}
+
+function renderRecentAlerts(){
+  const alerts = HISTORY.filter(h=>h.status!=='No falla').slice(0,6);
+  document.getElementById('recentAlertCount').textContent = alerts.length;
+  const list = document.getElementById('recentAlertsList');
+  if(alerts.length===0){
+    list.innerHTML = `<div class="empty-state" style="padding:40px 10px;"><div class="es-icon">✅</div><div>Todo en orden. No hay alertas críticas en este momento.</div></div>`;
+    return;
+  }
+  list.innerHTML = alerts.map(a=>`
+    <div class="recent-alert-item" data-id="${a.id}">
+      <div class="ra-badge" style="background:${statusColor(a.status)};">${a.status==='Falla'?'!':'~'}</div>
+      <div style="flex:1;">
+        <div style="font-weight:600; font-size:13px;">${a.machine}</div>
+        <div style="font-size:11.5px; color:var(--text-secondary);">${timeAgo(a.date)}</div>
+      </div>
+      <span class="badge-status ${levelFromStatus(a.status)}" style="font-size:10.5px; padding:3px 9px;">${a.status}</span>
+    </div>`).join('');
+  list.querySelectorAll('.recent-alert-item').forEach(item=>{
+    item.addEventListener('click', ()=>{ goToShapCase(item.dataset.id); });
+  });
+}
+
+function renderDashboardTable(){
+  const rows = HISTORY.slice(0,8);
+  document.getElementById('dashSummaryTable').innerHTML = rows.map(r=>`
+    <tr data-id="${r.id}">
+      <td style="font-weight:600;">${r.machine}</td>
+      <td style="color:var(--text-secondary);">${r.sensor}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.status}</td>
+      <td>${r.prob}%</td>
+      <td><span class="badge-status ${levelFromStatus(r.status)}">${r.status}</span></td>
+    </tr>`).join('');
+  document.querySelectorAll('#dashSummaryTable tr').forEach(tr=>{
+    tr.addEventListener('click', ()=>goToShapCase(tr.dataset.id));
+  });
+}
+
+function buildTrendData(days){
+  const labels=[]; const data=[];
+  const now = new Date(2026,6,27);
+  for(let i=days-1;i>=0;i--){
+    const d = new Date(now.getTime()-i*86400000);
+    labels.push(`${d.getDate()}/${d.getMonth()+1}`);
+    const base = 35 + 20*Math.sin(i/6) + randInt(-8,8);
+    data.push(Math.max(5,Math.min(95,Math.round(base))));
+  }
+  return {labels,data};
+}
+
+function initDashboardCharts(){
+  const loading = document.getElementById('trendChartLoading');
+  loading.style.display='block';
+  setTimeout(()=>{
+    loading.style.display='none';
+    const {labels,data} = buildTrendData(parseInt(document.getElementById('trendRangeSelect').value||30));
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    if(trendChartInstance) trendChartInstance.destroy();
+    trendChartInstance = new Chart(ctx,{
+      type:'line',
+      data:{labels, datasets:[{
+        label:'Riesgo promedio (%)', data, borderColor:COLORS.primary, borderWidth:2, pointRadius:0, tension:.35,
+        fill:true, backgroundColor:'rgba(29,111,224,0.08)'
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>`Riesgo promedio: ${ctx.parsed.y}% — 48 máquinas evaluadas`}}},
+        scales:{ y:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}} }
+      }
+    });
+
+    const machines = MACHINE_NAMES.slice(0,5).map(m=>({m, v:randInt(35,95)})).sort((a,b)=>b.v-a.v);
+    const ctx2 = document.getElementById('topRiskChart').getContext('2d');
+    if(topRiskChartInstance) topRiskChartInstance.destroy();
+    topRiskChartInstance = new Chart(ctx2,{
+      type:'bar',
+      data:{labels:machines.map(x=>x.m), datasets:[{data:machines.map(x=>x.v),
+        backgroundColor:machines.map(x=>statusColor(statusFromProb(x.v))), borderRadius:6, barThickness:22}]},
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>ctx.parsed.x+'% de riesgo'}}},
+        scales:{x:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, y:{grid:{display:false}}},
+        onClick:(evt,elements)=>{ if(elements.length){ showScreen('history'); document.getElementById('histSearch').value = machines[elements[0].index].m; applyHistoryFilters(); } }
+      }
+    });
+  }, 550);
+}
+document.getElementById('trendRangeSelect').addEventListener('change', initDashboardCharts);
+
+function goToShapCase(id){
+  showScreen('shap');
+  document.getElementById('shapCaseSelect').value = id;
+  renderShapCase(id);
+}
+
+/* =========================================================================================
+   PANTALLA 2 — CARGAR ARCHIVO CSV
+   ========================================================================================= */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+let uploadStep = 1;
+
+function setUploadStep(n){
+  uploadStep = n;
+  document.querySelectorAll('#uploadStepper .step').forEach(s=>{
+    const sn = parseInt(s.dataset.step);
+    s.classList.remove('active','done');
+    if(sn < n) s.classList.add('done');
+    else if(sn === n) s.classList.add('active');
+  });
+}
+
+dropzone.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('dragover');
+  if(e.dataTransfer.files.length) handleFileSelected(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{ if(e.target.files.length) handleFileSelected(e.target.files[0]); });
+
+document.getElementById('btnDownloadTemplate').addEventListener('click', ()=>{
+  const csv = "maquina,tipo,temperatura,vibracion,presion,horas_uso,humedad\nCompresor 01,Compresor,32.5,4.2,6.1,850,45\nMotor B-12,Motor eléctrico,41.0,7.8,5.4,1200,38\n";
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='plantilla_perfectime.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('success','Plantilla descargada correctamente.');
+});
+
+function handleFileSelected(file){
+  if(!file.name.toLowerCase().endsWith('.csv')){
+    document.getElementById('uploadMessages').innerHTML = `<div class="banner danger">❌ El archivo no tiene el formato esperado. Verifica las columnas requeridas. <span class="banner-link" id="viewTemplateLink">Ver plantilla</span></div>`;
+    document.getElementById('viewTemplateLink').addEventListener('click', ()=>document.getElementById('btnDownloadTemplate').click());
+    return;
+  }
+  if(file.size > 20*1024*1024){
+    showToast('error','El archivo supera el tamaño máximo permitido (20 MB).', true);
+    return;
+  }
+  document.getElementById('uploadMessages').innerHTML='';
+  document.getElementById('uploadDropzoneWrap').style.display='none';
+  document.getElementById('uploadFileCardWrap').style.display='block';
+  document.getElementById('fcFileName').textContent = file.name;
+  document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Subiendo...';
+  const fill = document.getElementById('fcProgressFill');
+  fill.style.width='0%';
+  let pct=0;
+  const uploadInterval = setInterval(()=>{
+    pct += randInt(10,22);
+    if(pct>=100){ pct=100; clearInterval(uploadInterval); onUploadComplete(file); }
+    fill.style.width=pct+'%';
+    document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Subiendo... '+pct+'%';
+  }, 200);
+}
+
+function onUploadComplete(file){
+  document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Validando estructura del archivo...';
+  setTimeout(()=>{
+    document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB · Validado';
+    setUploadStep(2);
+    showPreview();
+    showToast('success', `Archivo cargado correctamente: ${1204} registros detectados.`);
+  }, 700);
+}
+
+function showPreview(){
+  const cols = ['ID','Máquina','Temperatura','Vibración','Presión','Horas de uso','Fecha'];
+  document.getElementById('previewTableHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  let rows='';
+  for(let i=0;i<8;i++){
+    rows += `<tr>
+      <td>#${20000+i}</td><td>${pick(MACHINE_NAMES)}</td><td>${roundTo(20+rand()*30,1)}°C</td>
+      <td>${roundTo(rand()*10,1)} mm/s</td><td>${roundTo(3+rand()*6,1)} bar</td><td>${randInt(200,1800)} h</td>
+      <td>27/07/2026</td></tr>`;
+  }
+  document.getElementById('previewTableBody').innerHTML = rows;
+  document.getElementById('previewWarningBanner').innerHTML = `<div class="banner warning">⚠️ Se detectaron 12 valores faltantes en la columna 'Vibración'. El sistema los completará automáticamente antes de predecir.</div>`;
+  document.getElementById('previewSection').style.display='block';
+  setUploadStep(3);
+}
+
+document.getElementById('btnRemoveFile').addEventListener('click', resetUploadScreen);
+document.getElementById('btnCancelUpload').addEventListener('click', resetUploadScreen);
+
+function resetUploadScreen(){
+  document.getElementById('uploadDropzoneWrap').style.display='block';
+  document.getElementById('uploadFileCardWrap').style.display='none';
+  document.getElementById('previewSection').style.display='none';
+  document.getElementById('analysisSuccessBanner').style.display='none';
+  document.getElementById('uploadMessages').innerHTML='';
+  fileInput.value='';
+  setUploadStep(1);
+}
+
+document.getElementById('btnAnalyzeData').addEventListener('click', ()=>{
+  const btn = document.getElementById('btnAnalyzeData');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Analizando...';
+  document.getElementById('analyzingOverlay').style.display='flex';
+  setTimeout(()=>{
+    document.getElementById('analyzingOverlay').style.display='none';
+    btn.disabled=false; btn.innerHTML='⚡ Analizar datos';
+    setUploadStep(4);
+    document.getElementById('previewSection').style.display='none';
+    document.getElementById('analysisSuccessBanner').style.display='block';
+    document.getElementById('analysisSuccessBanner').innerHTML = `
+      <div class="banner success" style="flex-direction:column; align-items:flex-start; gap:10px;">
+        <div>✅ Análisis completado. Se generaron 1,204 nuevas predicciones.</div>
+        <button class="btn-primary-p" id="btnViewResults">Ver resultados</button>
+      </div>`;
+    document.getElementById('btnViewResults').addEventListener('click', ()=>{ showScreen('history'); resetUploadScreen(); });
+    showToast('success','Análisis completado correctamente.');
+  }, 1800);
+});
+
+/* =========================================================================================
+   PANTALLA 3 — PREDICCIÓN INDIVIDUAL
+   ========================================================================================= */
+const PREDICT_FIELDS = [
+  {id:'temp', label:'Temperatura (°C)', min:0, max:80, def:32, step:1, warnLow:15, warnHigh:60},
+  {id:'vib', label:'Vibración (mm/s)', min:0, max:15, def:4.2, step:.1, warnLow:0, warnHigh:9},
+  {id:'pres', label:'Presión (bar)', min:0, max:12, def:5.4, step:.1, warnLow:1, warnHigh:9},
+  {id:'horas', label:'Horas de uso acumuladas (h)', min:0, max:5000, def:850, step:10, warnLow:0, warnHigh:4000},
+  {id:'humedad', label:'Humedad (%)', min:0, max:100, def:45, step:1, warnLow:10, warnHigh:85},
+  {id:'rpm', label:'RPM', min:0, max:6000, def:1800, step:50, warnLow:200, warnHigh:5000}
+];
+function renderPredictForm(){
+  document.getElementById('predictFormFields').innerHTML = PREDICT_FIELDS.map(f=>`
+    <div class="field-group">
+      <label class="field-label">${f.label}</label>
+      <div class="field-input-row">
+        <button type="button" class="stepper-btn" data-dec="${f.id}">−</button>
+        <input type="number" class="field-input" id="field-${f.id}" value="${f.def}" step="${f.step}">
+        <button type="button" class="stepper-btn" data-inc="${f.id}">+</button>
+      </div>
+      <input type="range" class="field-range" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}" data-linked="${f.id}">
+    </div>`).join('');
+
+  PREDICT_FIELDS.forEach(f=>{
+    const input = document.getElementById('field-'+f.id);
+    const range = document.querySelector(`[data-linked="${f.id}"]`);
+    input.addEventListener('input', ()=>{ range.value = input.value; validateField(f,input); });
+    range.addEventListener('input', ()=>{ input.value = range.value; validateField(f,input); });
+  });
+  document.querySelectorAll('[data-inc]').forEach(b=>b.addEventListener('click', ()=>stepField(b.dataset.inc,1)));
+  document.querySelectorAll('[data-dec]').forEach(b=>b.addEventListener('click', ()=>stepField(b.dataset.dec,-1)));
+}
+function stepField(id,dir){
+  const f = PREDICT_FIELDS.find(x=>x.id===id);
+  const input = document.getElementById('field-'+id);
+  let v = parseFloat(input.value)+dir*f.step;
+  v = Math.max(f.min, Math.min(f.max, v));
+  input.value = roundTo(v, f.step<1?1:0);
+  document.querySelector(`[data-linked="${id}"]`).value = input.value;
+  validateField(f,input);
+}
+function validateField(f,input){
+  const v = parseFloat(input.value);
+  input.classList.remove('is-warning','is-invalid');
+  const hintId = 'hint-'+f.id;
+  let hint = document.getElementById(hintId);
+  if(v < f.warnLow || v > f.warnHigh){
+    input.classList.add('is-warning');
+    if(!hint){ hint=document.createElement('div'); hint.id=hintId; hint.className='field-hint'; input.closest('.field-group').appendChild(hint); }
+    hint.textContent = `Valor fuera del rango habitual (${f.warnLow}–${f.warnHigh})`;
+  } else if(hint){ hint.remove(); }
+}
+renderPredictForm();
+
+document.getElementById('btnClearForm').addEventListener('click', ()=>{
+  renderPredictForm();
+  document.getElementById('predictEmptyState').style.display='flex';
+  document.getElementById('predictLoadingState').style.display='none';
+  document.getElementById('predictResultState').style.display='none';
+  document.getElementById('predictErrorState').style.display='none';
+  document.getElementById('predictValidationMsg').style.display='none';
+});
+
+let lastPredictCase = null;
+function runPrediction(){
+  const values = {};
+  let allFilled = true;
+  PREDICT_FIELDS.forEach(f=>{
+    const input = document.getElementById('field-'+f.id);
+    if(input.value===''){ allFilled=false; input.classList.add('is-invalid'); }
+    values[f.id] = parseFloat(input.value);
+  });
+  document.getElementById('predictValidationMsg').style.display = allFilled?'none':'block';
+  if(!allFilled) return;
+
+  document.getElementById('predictEmptyState').style.display='none';
+  document.getElementById('predictResultState').style.display='none';
+  document.getElementById('predictErrorState').style.display='none';
+  document.getElementById('predictLoadingState').style.display='block';
+  const btn = document.getElementById('btnPredict');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Calculando...';
+
+  setTimeout(()=>{
+    btn.disabled=false; btn.innerHTML='⚡ Predecir';
+    document.getElementById('predictLoadingState').style.display='none';
+
+    // fórmula simulada de riesgo en base a los valores ingresados
+    let score = 0;
+    score += Math.max(0,(values.vib-4))*7;
+    score += Math.max(0,(values.temp-45))*1.1;
+    score += Math.max(0,(values.horas-2000))*0.012;
+    score += Math.max(0,(values.rpm-4000))*0.01;
+    score += randInt(-6,6);
+    const prob = Math.max(2, Math.min(97, Math.round(20+score)));
+    const status = statusFromProb(prob);
+    lastPredictCase = {prob, status, values};
+
+    document.getElementById('predictResultState').style.display='block';
+    const badge = document.getElementById('predictBadge');
+    badge.textContent = status; badge.className = 'badge-status lg '+levelFromStatus(status);
+    document.getElementById('predictProbText').textContent = `Probabilidad de falla: ${prob}%`;
+    document.getElementById('predictProbText').style.color = statusColor(status);
+    document.getElementById('gaugeValueText').textContent = prob+'%';
+    drawGauge(prob);
+
+    const mainFactor = values.vib>7?'Vibración elevada':(values.temp>55?'Temperatura elevada':'Horas de uso acumuladas altas');
+    document.getElementById('predictFactorSummary').innerHTML = `
+      <span class="shap-ico ${status==='No falla'?'down':'up'}" style="width:22px;height:22px;font-size:11px;">${status==='No falla'?'↓':'↑'}</span>
+      <span>Factor principal: <strong>${mainFactor}</strong></span>`;
+  }, 1100);
+}
+document.getElementById('btnPredict').addEventListener('click', runPrediction);
+document.getElementById('btnRetryPredict').addEventListener('click', runPrediction);
+document.getElementById('btnGoShapFromPredict').addEventListener('click', ()=>{
+  showScreen('shap');
+  renderShapCase(null, lastPredictCase);
+});
+
+let gaugeChartInstance;
+function drawGauge(prob){
+  const ctx = document.getElementById('gaugeChart').getContext('2d');
+  if(gaugeChartInstance) gaugeChartInstance.destroy();
+  gaugeChartInstance = new Chart(ctx,{
+    type:'doughnut',
+    data:{datasets:[{data:[33,33,34], backgroundColor:[COLORS.success,COLORS.warning,COLORS.danger], borderWidth:0}]},
+    options:{
+      rotation:-90, circumference:180, cutout:'75%',
+      plugins:{legend:{display:false}, tooltip:{enabled:false}}, responsive:true, maintainAspectRatio:false
+    }
+  });
+  const angle = -90 + (prob/100)*180;
+  document.getElementById('gaugeNeedle').style.transform = `translateX(-50%) rotate(${angle}deg)`;
+}
+
+/* =========================================================================================
+   PANTALLA 4 — EXPLICABILIDAD SHAP
+   ========================================================================================= */
+let shapInitialized = false;
+let shapWaterfallInstance, compareChartAInstance, compareChartBInstance;
+
+const SHAP_VAR_DEFS = [
+  {key:'Vibración', unit:'mm/s'}, {key:'Horas de uso', unit:'h'}, {key:'Temperatura', unit:'°C'},
+  {key:'Presión', unit:'bar'}, {key:'Humedad', unit:'%'}
+];
+function generateShapForCase(caseObj){
+  const base = 20;
+  const vars = SHAP_VAR_DEFS.map(v=>{
+    const impact = roundTo((rand()-0.35)*30, 1);
+    let val;
+    if(v.key==='Vibración') val = roundTo(2+rand()*8,1);
+    else if(v.key==='Horas de uso') val = randInt(200,2200);
+    else if(v.key==='Temperatura') val = roundTo(20+rand()*35,1);
+    else if(v.key==='Presión') val = roundTo(2+rand()*8,1);
+    else val = randInt(15,80);
+    return {name:v.key, unit:v.unit, value:val, impact};
+  }).sort((a,b)=>Math.abs(b.impact)-Math.abs(a.impact));
+  let running = base;
+  const waterfallData = vars.map(v=>{
+    const from = running; running += v.impact; return {...v, from, to:running};
+  });
+  const finalVal = Math.max(2,Math.min(98, Math.round(running)));
+  return {base, vars: waterfallData, final: finalVal};
+}
+
+function populateShapSelect(){
+  const sel = document.getElementById('shapCaseSelect');
+  sel.innerHTML = HISTORY.slice(0,30).map(h=>`<option value="${h.id}">${h.machine} — ${h.id} (${fmtDate(h.date)})</option>`).join('');
+  sel.addEventListener('change', ()=>renderShapCase(sel.value));
+  const compSel = document.getElementById('compareCaseBSelect');
+  compSel.innerHTML = HISTORY.slice(0,30).map(h=>`<option value="${h.id}">${h.machine} — ${h.id}</option>`).join('');
+  compSel.addEventListener('change', ()=>renderCompareChart('B', compSel.value));
+  renderShapCase(HISTORY[2].id);
+}
+
+function renderShapCase(id, customCase){
+  let caseData;
+  if(customCase){
+    caseData = {id:'#MANUAL', machine: document.getElementById('pMachineType').value+' (manual)', date:new Date(2026,6,27,14,32),
+      status: customCase.status, prob: customCase.prob};
+  } else {
+    caseData = HISTORY.find(h=>h.id===id) || HISTORY[0];
+  }
+  document.getElementById('shapMachineName').textContent = caseData.machine;
+  document.getElementById('shapCaseMeta').textContent = `ID ${caseData.id} — ${fmtDate(caseData.date)}`;
+  const badge = document.getElementById('shapResultBadge');
+  badge.textContent = caseData.status; badge.className='badge-status '+levelFromStatus(caseData.status);
+  document.getElementById('shapProbText').textContent = caseData.prob+'%';
+  document.getElementById('shapProbText').style.color = statusColor(caseData.status);
+
+  const confidence = caseData.prob>80||caseData.prob<20?'Alta':(caseData.prob>55||caseData.prob<45?'Media':'Baja');
+  document.getElementById('shapConfidenceText').textContent = confidence;
+  const bars = confidence==='Alta'?5:(confidence==='Media'?3:1);
+  document.getElementById('shapConfidenceBar').innerHTML = Array.from({length:5},(_,i)=>`<span class="${i<bars?'filled':''}"></span>`).join('');
+
+  const banner = document.getElementById('shapConfidenceBanner');
+  banner.innerHTML = confidence!=='Alta' ? `<div class="banner warning">⚠️ Esta predicción tiene un nivel de confianza ${confidence.toLowerCase()}. Se recomienda revisión manual.</div>` : '';
+
+  const shap = generateShapForCase(caseData);
+  document.getElementById('shapBaseVal').textContent = shap.base+'%';
+  document.getElementById('shapFinalVal').textContent = caseData.prob+'%';
+
+  renderWaterfall(shap);
+  renderFactorList(shap);
+}
+
+function renderWaterfall(shap){
+  const ctx = document.getElementById('shapWaterfallChart').getContext('2d');
+  if(shapWaterfallInstance) shapWaterfallInstance.destroy();
+  shapWaterfallInstance = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: shap.vars.map(v=>`${v.name} (${v.value}${v.unit})`),
+      datasets:[{
+        data: shap.vars.map(v=>[v.from,v.to]),
+        backgroundColor: shap.vars.map(v=>v.impact>=0?COLORS.danger:COLORS.success),
+        borderRadius:4, barThickness:26
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>{
+        const v = shap.vars[ctx.dataIndex];
+        return `${v.impact>=0?'+':''}${v.impact} puntos porcentuales`;
+      }}}},
+      scales:{x:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, y:{grid:{display:false}}}
+    }
+  });
+}
+function renderFactorList(shap){
+  document.getElementById('shapFactorList').innerHTML = shap.vars.map(v=>{
+    const up = v.impact>=0;
+    const phrase = up
+      ? `${v.name} ${v.name==='Vibración'?'elevada':'alta'} (${v.value}${v.unit}) ${Math.abs(v.impact)>10?'es uno de los factores que más aumenta':'aumenta'} el riesgo de falla.`
+      : `${v.name} dentro de rango normal (${v.value}${v.unit}) ayuda a reducir el riesgo.`;
+    return `<div class="shap-factor-item">
+      <div class="shap-ico ${up?'up':'down'}">${up?'↑':'↓'}</div>
+      <div style="font-size:13.5px;">${up?'🔴':'🟢'} ${phrase}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('btnCompareCase').addEventListener('click', ()=>{
+  document.getElementById('shapCompareWrap').style.display='block';
+  const currentId = document.getElementById('shapCaseSelect').value;
+  renderCompareChart('A', currentId);
+  const compSel = document.getElementById('compareCaseBSelect');
+  renderCompareChart('B', compSel.value);
+});
+document.getElementById('btnCloseCompare').addEventListener('click', ()=>{
+  document.getElementById('shapCompareWrap').style.display='none';
+});
+function renderCompareChart(slot, id){
+  const caseData = HISTORY.find(h=>h.id===id) || HISTORY[0];
+  document.getElementById('compareCaseA_meta').textContent = slot==='A' ? `${caseData.machine} — ${caseData.status} (${caseData.prob}%)` : document.getElementById('compareCaseA_meta').textContent;
+  const shap = generateShapForCase(caseData);
+  const canvasId = slot==='A'?'compareChartA':'compareChartB';
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const cfg = {
+    type:'bar',
+    data:{labels: shap.vars.map(v=>v.name), datasets:[{data:shap.vars.map(v=>[v.from,v.to]),
+      backgroundColor: shap.vars.map(v=>v.impact>=0?COLORS.danger:COLORS.success), borderRadius:4, barThickness:18}]},
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{min:0,max:100, grid:{color:COLORS.grid}}, y:{grid:{display:false}}}}
+  };
+  if(slot==='A'){ if(compareChartAInstance) compareChartAInstance.destroy(); compareChartAInstance = new Chart(ctx,cfg); }
+  else { if(compareChartBInstance) compareChartBInstance.destroy(); compareChartBInstance = new Chart(ctx,cfg); }
+}
+
+document.getElementById('btnExportShap').addEventListener('click', function(){
+  const btn=this; const original=btn.innerHTML;
+  btn.innerHTML='<span class="spin dark"></span> Generando...'; btn.disabled=true;
+  showToast('info','Generando PDF...');
+  setTimeout(()=>{
+    btn.innerHTML=original; btn.disabled=false;
+    showToast('success','PDF descargado.');
+  }, 1200);
+});
+
+/* =========================================================================================
+   PANTALLA 5 — MONITOREO
+   ========================================================================================= */
+let precisionChartInstance, responseChartInstance;
+const MONITOR_FILES = Array.from({length:14}, (_,i)=>{
+  const ok = rand()>0.15;
+  const warn = ok && rand()>0.75;
+  return {
+    name: `sensores_planta_${String.fromCharCode(65+i%5)}_${String(i+1).padStart(2,'0')}.csv`,
+    date: new Date(2026,6,27-i,randInt(7,19),randInt(0,59)),
+    records: randInt(300,2200),
+    status: !ok?'Error':(warn?'Con advertencias':'Éxito'),
+    duration: roundTo(0.8+rand()*4,1)
+  };
+});
+const SYSTEM_ALERTS = [
+  {sev:'warning', text:'Modelo no actualizado hace 45 días — se recomienda reentrenamiento.', date:'25 jul 2026'},
+  {sev:'danger', text:'Tiempo de respuesta promedio superó el umbral de 3s durante 2 horas.', date:'24 jul 2026'},
+  {sev:'info', text:'Nuevo tipo de sensor "Humedad" incorporado al pipeline de datos.', date:'20 jul 2026'},
+  {sev:'warning', text:'Se detectó drift moderado en la distribución de la variable Vibración.', date:'18 jul 2026'},
+];
+
+function renderMonitorKPIs(){
+  const kpis = [
+    {icon:'🎯', bg:'var(--success-bg)', value:'94.2%', label:'Precisión actual del modelo', variation:'▲ 1.1%', up:true},
+    {icon:'⏱️', bg:'var(--info-bg)', value:'1.8 s', label:'Tiempo promedio de respuesta', variation:'▼ 0.3s', up:false},
+    {icon:'📄', bg:'var(--info-bg)', value:'132', label:'Archivos procesados (período)', variation:null},
+    {icon:'🔺', bg:'var(--warning-bg)', value:'27', label:'Alertas generadas (período)', variation:'▲ 5', up:true}
+  ];
+  document.getElementById('monitorKpiRow').innerHTML = kpis.map(k=>`
+    <div class="card-p kpi-card">
+      <div class="kpi-icon" style="background:${k.bg};">${k.icon}</div>
+      <div><div class="kpi-value">${k.value}</div><div class="kpi-label">${k.label}</div></div>
+      ${k.variation?`<div class="kpi-variation ${k.up?'up':'down'}">${k.variation}</div>`:''}
+    </div>`).join('');
+  document.getElementById('monitorAccuracyBanner').innerHTML = `<div class="banner warning">⚠️ La precisión del modelo bajó 3% esta semana. Se recomienda reentrenamiento.</div>`;
+}
+
+function renderMonitorFiles(filterText){
+  filterText = (filterText||'').toLowerCase();
+  const rows = MONITOR_FILES.filter(f=>f.name.toLowerCase().includes(filterText));
+  const tbody = document.getElementById('monitorFilesTable');
+  if(rows.length===0){ tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94A3B8; padding:24px;">No se encontraron archivos que coincidan con la búsqueda.</td></tr>`; return; }
+  tbody.innerHTML = rows.map((f,idx)=>`
+    <tr data-idx="${idx}">
+      <td>📄 ${f.name}</td><td>${fmtDate(f.date)}</td><td>${f.records.toLocaleString('es-CL')}</td>
+      <td><span class="badge-status ${f.status==='Éxito'?'success':(f.status==='Error'?'danger':'warning')}">${f.status}</span></td>
+      <td>${f.duration} s</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr').forEach((tr,idx)=>{
+    tr.addEventListener('click', ()=>openFileDrawer(rows[idx]));
+  });
+}
+document.getElementById('monitorFileSearch').addEventListener('input', e=>renderMonitorFiles(e.target.value));
+
+function openFileDrawer(f){
+  document.getElementById('drawerContent').innerHTML = `
+    <div style="margin-bottom:14px;"><span class="badge-status ${f.status==='Éxito'?'success':(f.status==='Error'?'danger':'warning')}">${f.status}</span></div>
+    <div style="font-size:13.5px; line-height:1.9;">
+      <div><strong>Archivo:</strong> ${f.name}</div>
+      <div><strong>Fecha de procesamiento:</strong> ${fmtDate(f.date)}</div>
+      <div><strong>Registros procesados:</strong> ${f.records.toLocaleString('es-CL')}</div>
+      <div><strong>Duración:</strong> ${f.duration} s</div>
+    </div>
+    <hr>
+    <div style="font-size:12.5px; color:var(--text-secondary); font-weight:700; margin-bottom:8px;">LOG RESUMIDO</div>
+    <div style="font-family:monospace; font-size:12px; background:#F9FAFB; border-radius:8px; padding:12px; color:#475569; line-height:1.7;">
+      [OK] Archivo recibido y validado.<br>
+      [OK] Columnas verificadas correctamente.<br>
+      ${f.status==='Con advertencias'?'[WARN] Se completaron valores faltantes automáticamente.<br>':''}
+      ${f.status==='Error'?'[ERROR] Columna "vibracion" no encontrada en el archivo.<br>':'[OK] Predicciones generadas correctamente.<br>'}
+    </div>`;
+  document.getElementById('drawerOverlay').classList.add('show');
+  document.getElementById('fileDrawer').classList.add('show');
+}
+document.getElementById('btnCloseDrawer').addEventListener('click', closeDrawer);
+document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+function closeDrawer(){ document.getElementById('drawerOverlay').classList.remove('show'); document.getElementById('fileDrawer').classList.remove('show'); }
+
+function renderSystemAlerts(){
+  const sevMap = {info:{bg:COLORS.primary,ic:'ℹ️'}, warning:{bg:COLORS.warning,ic:'⚠️'}, danger:{bg:COLORS.danger,ic:'🚨'}};
+  document.getElementById('systemAlertsList').innerHTML = SYSTEM_ALERTS.map((a,i)=>`
+    <div class="alert-list-item" data-idx="${i}">
+      <div class="severity-dot" style="background:${sevMap[a.sev].bg};">${sevMap[a.sev].ic}</div>
+      <div style="flex:1;">${a.text}</div>
+      <div style="font-size:12px; color:var(--text-secondary); white-space:nowrap;">${a.date}</div>
+      <button class="btn-ghost-p" style="font-size:11.5px; padding:4px 8px;" data-review="${i}">✓ Marcar como revisado</button>
+    </div>`).join('');
+  document.querySelectorAll('[data-review]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const item = btn.closest('.alert-list-item');
+      item.style.opacity='0.45';
+      btn.textContent='✓ Revisado'; btn.disabled=true;
+    });
+  });
+}
+
+function initMonitorCharts(){
+  renderMonitorKPIs();
+  renderMonitorFiles('');
+  renderSystemAlerts();
+  const days=30; const labels=[]; const precisionData=[]; const now=new Date(2026,6,27);
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(now.getTime()-i*86400000); labels.push(`${d.getDate()}/${d.getMonth()+1}`);
+    let v = 93+Math.sin(i/5)*3+randInt(-2,2);
+    if(i>18 && i<22) v -= 6; // caída bajo umbral simulada
+    precisionData.push(Math.round(Math.max(78,Math.min(99,v))));
+  }
+  const ctx = document.getElementById('precisionChart').getContext('2d');
+  if(precisionChartInstance) precisionChartInstance.destroy();
+  precisionChartInstance = new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Precisión', data:precisionData, borderColor:COLORS.primary, segment:{borderColor:ctx2=>ctx2.p1.parsed.y<90?COLORS.danger:COLORS.primary}, pointRadius:0, tension:.3, borderWidth:2},
+      {label:'Umbral mínimo', data:labels.map(()=>90), borderColor:'#9CA3AF', borderDash:[5,5], pointRadius:0, borderWidth:1.5}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{min:75,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}, ticks:{maxTicksLimit:8}}}}
+  });
+
+  const respLabels=[]; const respData=[]; const respColors=[];
+  for(let i=11;i>=0;i--){
+    respLabels.push(`Lote ${12-i}`);
+    const v = roundTo(1+rand()*3.5,1);
+    respData.push(v); respColors.push(v>3?COLORS.warning:COLORS.primary);
+  }
+  const ctx2 = document.getElementById('responseChart').getContext('2d');
+  if(responseChartInstance) responseChartInstance.destroy();
+  responseChartInstance = new Chart(ctx2,{
+    type:'bar',
+    data:{labels:respLabels, datasets:[{data:respData, backgroundColor:respColors, borderRadius:6}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:(c)=>`${c.parsed.y}s — ${randInt(200,1800)} registros`}}},
+      scales:{y:{grid:{color:COLORS.grid}, ticks:{callback:v=>v+'s'}}, x:{grid:{display:false}}}}
+  });
+}
+
+/* =========================================================================================
+   PANTALLA 6 — HISTORIAL
+   ========================================================================================= */
+let historyState = {page:1, pageSize:10, sortKey:'fecha', sortDir:'desc'};
+
+function getFilteredHistory(){
+  const search = document.getElementById('histSearch').value.toLowerCase();
+  const resultF = document.getElementById('histResultFilter').value;
+  const typeF = document.getElementById('histTypeFilter').value;
+  const originF = document.getElementById('histOriginFilter').value;
+  let rows = HISTORY.filter(h=>
+    (!search || h.machine.toLowerCase().includes(search) || h.id.toLowerCase().includes(search)) &&
+    (!resultF || h.status===resultF) &&
+    (!typeF || h.type===typeF) &&
+    (!originF || h.origin===originF)
+  );
+  rows.sort((a,b)=>{
+    let av, bv;
+    if(historyState.sortKey==='fecha'){ av=a.date; bv=b.date; } else { av=a.prob; bv=b.prob; }
+    return historyState.sortDir==='asc' ? (av>bv?1:-1) : (av<bv?1:-1);
+  });
+  return rows;
+}
+
+function renderHistoryTable(){
+  const overlay = document.getElementById('histTableLoadingOverlay');
+  overlay.style.display='flex';
+  setTimeout(()=>{
+    overlay.style.display='none';
+    const rows = getFilteredHistory();
+    const start = (historyState.page-1)*historyState.pageSize;
+    const pageRows = rows.slice(start, start+historyState.pageSize);
+    const tbody = document.getElementById('historyTableBody');
+    const emptyState = document.getElementById('historyEmptyState');
+
+    const anyFilter = document.getElementById('histSearch').value || document.getElementById('histResultFilter').value ||
+      document.getElementById('histTypeFilter').value || document.getElementById('histOriginFilter').value;
+    document.getElementById('btnClearFilters').style.display = anyFilter?'inline-block':'none';
+
+    if(rows.length===0){
+      tbody.innerHTML='';
+      emptyState.style.display='block';
+      emptyState.innerHTML = HISTORY.length===0
+        ? `<div class="empty-state"><div class="es-icon">🕓</div><div>Aún no hay predicciones registradas. Ve a 'Cargar archivo CSV' o 'Predicción individual' para comenzar.</div></div>`
+        : `<div class="empty-state"><div class="es-icon">🔎</div><div>No se encontraron resultados con los filtros aplicados.</div><button class="btn-secondary-p" style="margin-top:12px;" id="emptyClearFilters">Limpiar filtros</button></div>`;
+      const btn = document.getElementById('emptyClearFilters');
+      if(btn) btn.addEventListener('click', clearHistoryFilters);
+      document.getElementById('historyPagination').innerHTML='';
+      return;
+    }
+    emptyState.style.display='none';
+
+    tbody.innerHTML = pageRows.map(r=>{
+      const confDots = r.confidence==='Alta'?3:(r.confidence==='Media'?2:1);
+      return `<tr data-id="${r.id}">
+        <td style="font-family:monospace; color:var(--text-secondary);">${r.id}</td>
+        <td style="font-weight:600;">${r.machine}</td>
+        <td>${fmtDate(r.date)}</td>
+        <td><span class="badge-soft ${r.origin==='CSV'?'blue':'grey'}">${r.origin}</span></td>
+        <td><span class="badge-status ${levelFromStatus(r.status)}">${r.status}</span></td>
+        <td>${r.prob}%<div class="mini-progress"><div class="mini-progress-fill" style="width:${r.prob}%; background:${statusColor(r.status)};"></div></div></td>
+        <td>${r.confidence}</td>
+        <td>
+          <button class="btn-ghost-p" style="padding:4px 6px;" data-action="view" data-id="${r.id}" title="Ver explicación SHAP">👁️</button>
+          <button class="btn-ghost-p" style="padding:4px 6px;" data-action="download" data-id="${r.id}" title="Descargar registro">⬇️</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('[data-action="view"]').forEach(b=>b.addEventListener('click', e=>{ e.stopPropagation(); goToShapCase(b.dataset.id); }));
+    tbody.querySelectorAll('[data-action="download"]').forEach(b=>b.addEventListener('click', e=>{
+      e.stopPropagation();
+      showToast('success', `Registro ${b.dataset.id} descargado.`);
+    }));
+    tbody.querySelectorAll('tr').forEach(tr=>tr.addEventListener('click', ()=>goToShapCase(tr.dataset.id)));
+
+    renderPagination(rows.length);
+  }, 350);
+}
+
+function renderPagination(total){
+  const totalPages = Math.max(1, Math.ceil(total/historyState.pageSize));
+  const start = (historyState.page-1)*historyState.pageSize+1;
+  const end = Math.min(total, historyState.page*historyState.pageSize);
+  let btns='';
+  for(let p=1;p<=totalPages;p++){
+    if(p===1||p===totalPages||Math.abs(p-historyState.page)<=1){
+      btns += `<button class="pg-btn ${p===historyState.page?'active':''}" data-page="${p}">${p}</button>`;
+    } else if(btns.slice(-3)!=='...'){ btns += `<span style="padding:0 4px;">…</span>`; }
+  }
+  document.getElementById('historyPagination').innerHTML = `
+    <div>Mostrando ${start}–${end} de ${total} resultados</div>
+    <div class="pg-controls">
+      <button class="pg-btn" id="pgPrev" ${historyState.page===1?'disabled':''}>‹</button>
+      ${btns}
+      <button class="pg-btn" id="pgNext" ${historyState.page===totalPages?'disabled':''}>›</button>
+    </div>`;
+  document.querySelectorAll('#historyPagination [data-page]').forEach(b=>b.addEventListener('click', ()=>{ historyState.page=parseInt(b.dataset.page); renderHistoryTable(); scrollHistoryTop(); }));
+  const prev=document.getElementById('pgPrev'), next=document.getElementById('pgNext');
+  if(prev) prev.addEventListener('click', ()=>{ if(historyState.page>1){historyState.page--; renderHistoryTable(); scrollHistoryTop();} });
+  if(next) next.addEventListener('click', ()=>{ if(historyState.page<totalPages){historyState.page++; renderHistoryTable(); scrollHistoryTop();} });
+}
+function scrollHistoryTop(){ document.getElementById('screen-history').scrollIntoView({behavior:'smooth', block:'start'}); }
+
+function applyHistoryFilters(){ historyState.page=1; renderHistoryTable(); }
+['histSearch','histResultFilter','histTypeFilter','histOriginFilter'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener(el.tagName==='SELECT'?'change':'input', applyHistoryFilters);
+});
+function clearHistoryFilters(){
+  document.getElementById('histSearch').value='';
+  document.getElementById('histResultFilter').value='';
+  document.getElementById('histTypeFilter').value='';
+  document.getElementById('histOriginFilter').value='';
+  applyHistoryFilters();
+}
+document.getElementById('btnClearFilters').addEventListener('click', clearHistoryFilters);
+
+document.querySelectorAll('.table-p thead th.sortable').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.sort;
+    if(historyState.sortKey===key){ historyState.sortDir = historyState.sortDir==='asc'?'desc':'asc'; }
+    else { historyState.sortKey=key; historyState.sortDir='desc'; }
+    renderHistoryTable();
+  });
+});
+
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>doExportHistory('CSV'));
+document.getElementById('exportPdfBtn').addEventListener('click', ()=>doExportHistory('PDF'));
+function doExportHistory(type){
+  closeAllDropdowns();
+  showToast('info', `Generando archivo ${type}...`);
+  setTimeout(()=>{
+    if(rand()>0.08){ showToast('success','Historial exportado correctamente.'); }
+    else { showToast('error','No se pudo generar el archivo de exportación.', true); }
+  }, 1000);
+}
+
+/* =========================================================================================
+   INICIALIZACIÓN GENERAL
+   ========================================================================================= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderDashboardKPIs();
+  renderRecentAlerts();
+  renderDashboardTable();
+  initDashboardCharts();
+});
+
+})();
+</script>
+</body>
+</html>
