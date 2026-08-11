@@ -1,0 +1,17 @@
+# Entorno / Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Artefactos del modelo (se regeneran al ejecutar el notebook)
+backend/*.pkl
+
+# Variables de entorno / configuración local
+.env
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
