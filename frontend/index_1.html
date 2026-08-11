@@ -567,9 +567,11 @@ a{text-decoration:none;}
             <h6 style="margin-bottom:16px;">Datos del sensor</h6>
             <div style="display:flex; gap:12px; margin-bottom:18px;">
               <div style="flex:1;">
-                <label class="field-label">Tipo de máquina</label>
+                <label class="field-label">Calidad del producto (Type)</label>
                 <select class="form-select-sm-p" style="width:100%;" id="pMachineType">
-                  <option>Compresor</option><option>Motor eléctrico</option><option>Bomba centrífuga</option><option>Turbina</option>
+                  <option value="L">L — Baja</option>
+                  <option value="M" selected>M — Media</option>
+                  <option value="H">H — Alta</option>
                 </select>
               </div>
               <div style="flex:1;">
@@ -826,6 +828,8 @@ const COLORS = {primary:'#1D6FE0', success:'#2E9E5B', danger:'#E13B3B', warning:
 
 /* ---------- RNG determinista simple para datos simulados reproducibles ---------- */
 let seed = 42;
+/* ===== CONEXIÓN CON LA API DE FASTAPI ===== */
+const API_URL = 'http://127.0.0.1:8000';
 function rand(){ seed = (seed*9301+49297) % 233280; return seed/233280; }
 function randInt(min,max){ return Math.floor(rand()*(max-min+1))+min; }
 function pick(arr){ return arr[randInt(0,arr.length-1)]; }
@@ -1198,12 +1202,11 @@ document.getElementById('btnAnalyzeData').addEventListener('click', ()=>{
    PANTALLA 3 — PREDICCIÓN INDIVIDUAL
    ========================================================================================= */
 const PREDICT_FIELDS = [
-  {id:'temp', label:'Temperatura (°C)', min:0, max:80, def:32, step:1, warnLow:15, warnHigh:60},
-  {id:'vib', label:'Vibración (mm/s)', min:0, max:15, def:4.2, step:.1, warnLow:0, warnHigh:9},
-  {id:'pres', label:'Presión (bar)', min:0, max:12, def:5.4, step:.1, warnLow:1, warnHigh:9},
-  {id:'horas', label:'Horas de uso acumuladas (h)', min:0, max:5000, def:850, step:10, warnLow:0, warnHigh:4000},
-  {id:'humedad', label:'Humedad (%)', min:0, max:100, def:45, step:1, warnLow:10, warnHigh:85},
-  {id:'rpm', label:'RPM', min:0, max:6000, def:1800, step:50, warnLow:200, warnHigh:5000}
+  {id:'airTemp',  label:'Temperatura del aire (K)',        min:290, max:315, def:298.1, step:.1,  warnLow:295.3, warnHigh:304.5, api:'air_temperature_k'},
+  {id:'procTemp', label:'Temperatura del proceso (K)',     min:300, max:325, def:308.6, step:.1,  warnLow:305.7, warnHigh:313.8, api:'process_temperature_k'},
+  {id:'rpm',      label:'Velocidad de rotación (rpm)',     min:1000,max:3000,def:1551,  step:1,   warnLow:1168,  warnHigh:2886,  api:'rotational_speed_rpm'},
+  {id:'torque',   label:'Torque (Nm)',                     min:0,   max:100, def:42.8,  step:.1,  warnLow:3.8,   warnHigh:76.6,  api:'torque_nm'},
+  {id:'toolWear', label:'Desgaste de herramienta (min)',   min:0,   max:300, def:108,   step:1,   warnLow:0,     warnHigh:253,   api:'tool_wear_min'}
 ];
 function renderPredictForm(){
   document.getElementById('predictFormFields').innerHTML = PREDICT_FIELDS.map(f=>`
@@ -1258,7 +1261,8 @@ document.getElementById('btnClearForm').addEventListener('click', ()=>{
 });
 
 let lastPredictCase = null;
-function runPrediction(){
+async function runPrediction(){
+  // ---- 1. Recolección y validación de los valores del formulario ----
   const values = {};
   let allFilled = true;
   PREDICT_FIELDS.forEach(f=>{
@@ -1269,6 +1273,7 @@ function runPrediction(){
   document.getElementById('predictValidationMsg').style.display = allFilled?'none':'block';
   if(!allFilled) return;
 
+  // ---- 2. Estado de carga ----
   document.getElementById('predictEmptyState').style.display='none';
   document.getElementById('predictResultState').style.display='none';
   document.getElementById('predictErrorState').style.display='none';
@@ -1276,34 +1281,65 @@ function runPrediction(){
   const btn = document.getElementById('btnPredict');
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Calculando...';
 
-  setTimeout(()=>{
+  // ---- 3. Construcción del payload esperado por la API ----
+  const payload = {
+    air_temperature_k:     values.airTemp,
+    process_temperature_k: values.procTemp,
+    rotational_speed_rpm:  values.rpm,
+    torque_nm:             values.torque,
+    tool_wear_min:         values.toolWear,
+    type:                  document.getElementById('pMachineType').value
+  };
+
+  // ---- 4. Llamada real al modelo XGBoost ----
+  try {
+    const response = await fetch(`${API_URL}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if(!response.ok){
+      const err = await response.json().catch(()=>({}));
+      throw new Error(err.detail || `La API respondió con estado ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // ---- 5. Renderizado del resultado devuelto por el backend ----
     btn.disabled=false; btn.innerHTML='⚡ Predecir';
     document.getElementById('predictLoadingState').style.display='none';
 
-    // fórmula simulada de riesgo en base a los valores ingresados
-    let score = 0;
-    score += Math.max(0,(values.vib-4))*7;
-    score += Math.max(0,(values.temp-45))*1.1;
-    score += Math.max(0,(values.horas-2000))*0.012;
-    score += Math.max(0,(values.rpm-4000))*0.01;
-    score += randInt(-6,6);
-    const prob = Math.max(2, Math.min(97, Math.round(20+score)));
-    const status = statusFromProb(prob);
+    const prob   = Math.round(data.probabilidad_porcentaje);
+    const status = data.nivel_riesgo;
     lastPredictCase = {prob, status, values};
 
     document.getElementById('predictResultState').style.display='block';
     const badge = document.getElementById('predictBadge');
-    badge.textContent = status; badge.className = 'badge-status lg '+levelFromStatus(status);
+    badge.textContent = status;
+    badge.className = 'badge-status lg '+levelFromStatus(status);
     document.getElementById('predictProbText').textContent = `Probabilidad de falla: ${prob}%`;
     document.getElementById('predictProbText').style.color = statusColor(status);
     document.getElementById('gaugeValueText').textContent = prob+'%';
     drawGauge(prob);
 
-    const mainFactor = values.vib>7?'Vibración elevada':(values.temp>55?'Temperatura elevada':'Horas de uso acumuladas altas');
+    // Factor principal calculado con SHAP en el backend
+    const mainFactor = data.factor_principal || 'No disponible';
+    const sube = data.factores.length ? data.factores[0].efecto === 'aumenta' : false;
     document.getElementById('predictFactorSummary').innerHTML = `
-      <span class="shap-ico ${status==='No falla'?'down':'up'}" style="width:22px;height:22px;font-size:11px;">${status==='No falla'?'↓':'↑'}</span>
+      <span class="shap-ico ${sube?'up':'down'}" style="width:22px;height:22px;font-size:11px;">${sube?'↑':'↓'}</span>
       <span>Factor principal: <strong>${mainFactor}</strong></span>`;
-  }, 1100);
+
+  } catch(error){
+    // ---- 6. Manejo de errores (API apagada, CORS, validación) ----
+    btn.disabled=false; btn.innerHTML='⚡ Predecir';
+    document.getElementById('predictLoadingState').style.display='none';
+    document.getElementById('predictErrorState').style.display='block';
+    const errBox = document.getElementById('predictErrorState');
+    const msg = errBox.querySelector('p') || errBox;
+    msg.textContent = `No se pudo conectar con el modelo: ${error.message}. Verifica que la API esté corriendo en ${API_URL}.`;
+    console.error('Error en la predicción:', error);
+  }
 }
 document.getElementById('btnPredict').addEventListener('click', runPrediction);
 document.getElementById('btnRetryPredict').addEventListener('click', runPrediction);
