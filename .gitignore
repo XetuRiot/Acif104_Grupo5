@@ -2,9 +2,11 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.venv/
 
 # Artefactos del modelo (se regeneran al ejecutar el notebook)
 backend/*.pkl
+modelos/*.pkl
 
 # Variables de entorno / configuración local
 .env
@@ -15,3 +17,7 @@ Thumbs.db
 
 # VS Code
 .vscode/
+
+# Instaladores descargados (no forman parte del proyecto)
+Anaconda3-*.exe
+Miniconda3-*.exe

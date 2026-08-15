@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-ARTIFACTS_DIR = BASE_DIR.parent / "artifacts"
+ARTIFACTS_DIR = BASE_DIR.parent / "modelos"
 
 # Orden de columnas por defecto (debe coincidir con el del entrenamiento)
 COLUMNAS_DEFAULT = [
