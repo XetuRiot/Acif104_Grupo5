@@ -21,24 +21,27 @@ una API REST desarrollada en FastAPI y una interfaz web de operador.
 
 ```
 Acif104_Grupo5/
-├── data/
+├── datasets/
 │   └── ai4i2020.csv              # Dataset (10.000 registros, 14 columnas)
 ├── notebooks/
 │   └── Sumativa.ipynb            # EDA, preprocesamiento, entrenamiento y SHAP
-├── backend/
-│   ├── main.py                   # API REST (FastAPI)
+├── modelos/
 │   ├── modelo_xgboost.pkl        # Modelo entrenado (generado por el notebook)
 │   ├── scaler.pkl                # StandardScaler ajustado
 │   └── columnas.pkl              # Orden de columnas esperado por el modelo
+├── backend/
+│   └── main.py                   # API REST (FastAPI)
 ├── frontend/
 │   └── index_1.html              # Interfaz de operador
+├── Documentacion/                # Informes entregados en cada fase
 ├── environment.yml               # Definición del entorno Conda
 └── README.md
 ```
 
 > **Nota:** los tres archivos `.pkl` se generan al ejecutar el notebook (sección 10) y se
-> guardan directamente en `backend/`, junto a `main.py`. No se versionan aparte porque
-> se regeneran cada vez que se reentrena el modelo.
+> guardan en `modelos/`, en la raíz del proyecto (no dentro de `backend/`). No se
+> versionan porque se regeneran cada vez que se reentrena el modelo; `backend/main.py`
+> los carga desde ahí en el arranque de la API.
 
 ## Requisitos previos
 
@@ -146,10 +149,12 @@ jupyter lab
 ### Paso 3.4 — Ejecutar el análisis
 
 Ejecutar las celdas en orden con **Run All** o `Shift + Enter` celda por celda.
-El notebook espera encontrar el dataset en `data/ai4i2020.csv`.
+El notebook ubica automáticamente la raíz del proyecto (busca `environment.yml`
+subiendo desde el directorio de trabajo del kernel) y lee el dataset desde
+`datasets/ai4i2020.csv`, sin depender de dónde se haya lanzado Jupyter.
 
 Al finalizar, la última sección del notebook (serialización) genera los tres archivos
-`.pkl` directamente en `backend/`, necesarios para que la API funcione.
+`.pkl` en `modelos/`, necesarios para que la API funcione.
 
 **Tiempo estimado de ejecución completa:** 3–6 minutos (la celda de GridSearchCV es la
 más lenta, entre 2 y 4 minutos según el equipo).
@@ -281,10 +286,18 @@ para la inferencia en producción:
 
 **Incidente y corrección:** la primera versión de la celda usaba una ruta relativa
 (`Path("../artifacts")`), lo que —dependiendo del directorio de trabajo del kernel—
-terminó escribiendo los archivos fuera de la carpeta del proyecto. Se corrigió usando
-una ruta absoluta explícita apuntando a `backend/`, y se añadió a la celda un bloque
-de verificación que recarga el modelo guardado y confirma que reproduce exactamente
-la misma predicción que el modelo en memoria.
+terminó escribiendo los archivos fuera de la carpeta del proyecto (se llegó a generar
+una copia en `Documents/Machine Learning/artifacts`, un nivel por sobre el repo). Se
+añadió a la celda un bloque de verificación que recarga el modelo guardado y confirma
+que reproduce exactamente la misma predicción que el modelo en memoria.
+
+**Corrección de fase 3:** al reorganizar el repo en carpetas `datasets/`, `notebooks/`
+y `modelos/` (ver sección de estructura más arriba), la ruta relativa seguía siendo
+frágil frente a la ubicación desde la que se lanzara Jupyter. Se reemplazó por una
+función `_find_project_root()` que sube desde el directorio de trabajo del kernel
+hasta encontrar `environment.yml`, y calcula `datasets/` y `modelos/` a partir de esa
+raíz. Con esto la lectura del CSV y la serialización de artefactos dejan de depender
+del comando usado para abrir el notebook.
 
 ### 5. Construcción de la API REST (`backend/main.py`)
 
@@ -299,11 +312,11 @@ Se creó desde cero el servicio FastAPI que reemplaza la lógica simulada del fr
 - Validación de entrada con Pydantic (rangos físicamente plausibles por variable).
 - CORS abierto para desarrollo local.
 
-**Corrección posterior:** la carga de artefactos originalmente asumía una única ruta
-fija (`backend/`), lo que rompía si el modelo aún no se había generado o estaba en otra
-carpeta. Se reemplazó por una búsqueda en varias rutas candidatas (`backend/`,
-`backend/artifacts/`, `../artifacts/`, raíz del proyecto), con un mensaje de error que
-lista exactamente qué rutas se revisaron en caso de no encontrar el modelo.
+**Corrección posterior:** la carga de artefactos originalmente asumía una ruta fija
+distinta a la que realmente usaba el notebook para guardar los `.pkl`, lo que rompía
+el arranque de la API si no coincidían. Ambas rutas se alinearon apuntando a
+`modelos/` en la raíz del proyecto (`ARTIFACTS_DIR = BASE_DIR.parent / "modelos"`),
+con un mensaje de error explícito si el modelo no se ha generado todavía.
 
 ### 6. Conexión del frontend con la API real
 
