@@ -8,6 +8,10 @@ __pycache__/
 backend/*.pkl
 modelos/*.pkl
 
+# Historial de predicciones y datos de reentrenamiento (se generan solo al usar la API)
+backend/historial.db
+datasets/nuevos_registros.csv
+
 # Variables de entorno / configuración local
 .env
 

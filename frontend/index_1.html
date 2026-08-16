@@ -455,8 +455,8 @@ a{text-decoration:none;}
 
         <!-- TOP 5 RISK BAR CHART -->
         <div class="card-p" style="margin-bottom:24px;">
-          <h6 style="margin-bottom:2px;">Top 5 máquinas con mayor riesgo actual</h6>
-          <div class="chart-card-sub">Haz clic en una barra para ver el historial de esa máquina</div>
+          <h6 style="margin-bottom:2px;">Top 5 predicciones con mayor riesgo</h6>
+          <div class="chart-card-sub">Haz clic en una barra para ver su explicación SHAP</div>
           <div style="height:230px;"><canvas id="topRiskChart"></canvas></div>
         </div>
 
@@ -468,7 +468,7 @@ a{text-decoration:none;}
           </div>
           <div class="table-wrap">
             <table class="table-p">
-              <thead><tr><th>Máquina</th><th>Sensor</th><th>Fecha</th><th>Predicción</th><th>Probabilidad</th><th>Estado</th></tr></thead>
+              <thead><tr><th>Registro</th><th>Factor principal</th><th>Fecha</th><th>Predicción</th><th>Probabilidad</th><th>Estado</th></tr></thead>
               <tbody id="dashSummaryTable"></tbody>
             </table>
           </div>
@@ -664,8 +664,8 @@ a{text-decoration:none;}
 
         <div class="grid grid-7-5">
           <div class="card-p">
-            <h6 style="margin-bottom:2px;">Impacto de cada variable en la predicción</h6>
-            <div class="chart-card-sub">Base: <span id="shapBaseVal">20%</span> → Predicción final: <span id="shapFinalVal">83%</span></div>
+            <h6 style="margin-bottom:2px;">Aporte de cada variable (valores SHAP)</h6>
+            <div class="chart-card-sub">Predicción final: <span id="shapFinalVal">83%</span></div>
             <div style="height:340px;"><canvas id="shapWaterfallChart"></canvas></div>
           </div>
           <div class="card-p" style="max-height:420px; overflow-y:auto;">
@@ -726,33 +726,55 @@ a{text-decoration:none;}
 
         <div class="grid grid-6-6" style="margin-bottom:24px;">
           <div class="card-p">
-            <h6 style="margin-bottom:2px;">Precisión del modelo en el tiempo</h6>
-            <div class="chart-card-sub">Línea punteada gris = umbral mínimo aceptable (90%)</div>
+            <h6 style="margin-bottom:2px;">Predicciones por nivel de riesgo</h6>
+            <div class="chart-card-sub">Cantidad de predicciones registradas en cada categoría</div>
             <div style="height:280px;"><canvas id="precisionChart"></canvas></div>
           </div>
           <div class="card-p">
-            <h6 style="margin-bottom:2px;">Tiempo de respuesta por análisis</h6>
-            <div class="chart-card-sub">Barras naranjas = análisis que excedieron el umbral esperado (3s)</div>
+            <h6 style="margin-bottom:2px;">Predicciones por origen</h6>
+            <div class="chart-card-sub">Predicción individual vs. carga de archivo CSV</div>
             <div style="height:280px;"><canvas id="responseChart"></canvas></div>
           </div>
         </div>
 
         <div class="card-p" style="margin-bottom:24px;">
           <div class="card-title-row">
-            <h6>Archivos procesados</h6>
-            <input type="text" class="form-control-sm-p" id="monitorFileSearch" placeholder="Buscar por nombre de archivo...">
+            <h6>Detalle por origen</h6>
           </div>
           <div class="table-wrap">
             <table class="table-p">
-              <thead><tr><th>Nombre de archivo</th><th>Fecha</th><th>N° de registros</th><th>Estado</th><th>Duración</th></tr></thead>
-              <tbody id="monitorFilesTable"></tbody>
+              <thead><tr><th>Origen</th><th>Cantidad</th></tr></thead>
+              <tbody id="monitorOrigenTable"></tbody>
             </table>
           </div>
         </div>
 
-        <div class="card-p">
-          <h6 style="margin-bottom:10px;">Alertas del sistema</h6>
+        <div class="card-p" style="margin-bottom:24px;">
+          <h6 style="margin-bottom:10px;">Predicciones con riesgo (Falla / Riesgo medio)</h6>
           <div id="systemAlertsList"></div>
+        </div>
+
+        <div class="card-p">
+          <h6 style="margin-bottom:2px;">Reentrenar el modelo con datos históricos nuevos</h6>
+          <div class="chart-card-sub">Sube registros con el resultado real conocido (si la máquina falló o no). Sin ese resultado real no hay forma correcta de "enseñarle" nada al modelo — por eso este archivo pide una columna más que el de "Cargar archivo CSV".</div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:14px 0;">
+            <button class="btn-secondary-p" id="btnDownloadRetrainTemplate">📄 Descargar plantilla</button>
+            <input type="file" id="retrainFileInput" accept=".csv" style="display:none;">
+            <button class="btn-secondary-p" id="btnSelectRetrainFile">📁 Elegir archivo CSV</button>
+            <span id="retrainFileName" style="font-size:12.5px; color:var(--text-secondary);"></span>
+            <button class="btn-primary-p" id="btnRetrain" disabled>🔄 Reentrenar modelo</button>
+          </div>
+          <div id="retrainMessages"></div>
+          <div id="retrainResult" style="display:none; margin-top:14px;"></div>
+          <div style="margin-top:20px;">
+            <div style="font-size:12.5px; color:var(--text-secondary); font-weight:700; margin-bottom:8px;">HISTORIAL DE REENTRENAMIENTOS</div>
+            <div class="table-wrap">
+              <table class="table-p">
+                <thead><tr><th>Fecha</th><th>Registros nuevos</th><th>Total entrenamiento</th><th>Accuracy</th><th>F1-Score</th><th>AUC-ROC</th></tr></thead>
+                <tbody id="retrainHistoryTable"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -777,7 +799,7 @@ a{text-decoration:none;}
         <div class="filters-bar">
           <input type="text" class="search-input" id="histSearch" placeholder="🔎 Buscar por máquina o ID...">
           <select id="histResultFilter"><option value="">Resultado: Todos</option><option value="No falla">No falla</option><option value="Riesgo medio">Riesgo medio</option><option value="Falla">Falla</option></select>
-          <select id="histTypeFilter"><option value="">Tipo de máquina: Todos</option><option>Compresor</option><option>Motor eléctrico</option><option>Bomba centrífuga</option><option>Turbina</option></select>
+          <select id="histTypeFilter"><option value="">Calidad de producto: Todas</option><option value="H">H — Alta</option><option value="M">M — Media</option><option value="L">L — Baja</option></select>
           <select id="histOriginFilter"><option value="">Origen: Todos</option><option value="CSV">CSV</option><option value="Manual">Manual</option></select>
           <button class="btn-link-p" id="btnClearFilters" style="display:none;">Limpiar filtros</button>
         </div>
@@ -835,36 +857,59 @@ function randInt(min,max){ return Math.floor(rand()*(max-min+1))+min; }
 function pick(arr){ return arr[randInt(0,arr.length-1)]; }
 function roundTo(n,d){ const p=Math.pow(10,d); return Math.round(n*p)/p; }
 
-const MACHINE_NAMES = ['Compresor 01','Compresor 04','Motor B-12','Motor A-07','Bomba C-03','Bomba C-09','Turbina T-02','Turbina T-05',
-  'Compresor 08','Motor D-14','Bomba E-01','Compresor 11','Motor F-06','Turbina T-09','Bomba G-02'];
-const MACHINE_TYPES = ['Compresor','Motor eléctrico','Bomba centrífuga','Turbina'];
-const SENSORS = ['Vibración','Temperatura','Presión','Humedad'];
-
-function statusFromProb(p){ if(p>=67) return 'Falla'; if(p>=34) return 'Riesgo medio'; return 'No falla'; }
 function levelFromStatus(s){ return s==='Falla'?'danger':(s==='Riesgo medio'?'warning':'success'); }
 function statusColor(s){ return s==='Falla'?COLORS.danger:(s==='Riesgo medio'?COLORS.warning:COLORS.success); }
 
-/* ---------- Generación de historial simulado (120 registros) ---------- */
-const HISTORY = [];
-(function genHistory(){
-  const now = new Date(2026,6,27,14,32);
-  for(let i=0;i<120;i++){
-    const prob = randInt(3,98);
-    const status = statusFromProb(prob);
-    const date = new Date(now.getTime() - i*3600*1000*randInt(2,9));
-    HISTORY.push({
-      id: '#'+String(10000+i*3+randInt(1,2)).slice(-5),
-      machine: pick(MACHINE_NAMES),
-      type: pick(MACHINE_TYPES),
-      sensor: pick(SENSORS),
-      date: date,
-      origin: rand()>0.4?'CSV':'Manual',
-      status: status,
-      prob: prob,
-      confidence: prob>80||prob<20 ? 'Alta' : (prob>55||prob<45? 'Media':'Baja')
-    });
+/* ---------- Historial real, obtenido desde la API ---------- */
+let HISTORY = [];
+let MONITOREO = null;
+
+async function fetchJSON(path, options){
+  const resp = await fetch(`${API_URL}${path}`, options);
+  if(!resp.ok) throw new Error(`${path} respondió con estado ${resp.status}`);
+  return resp.json();
+}
+
+// Convierte un registro tal cual lo devuelve la API a la forma que usan
+// las funciones de renderizado (mismos nombres de campo que se usaban
+// con los datos simulados, para no tener que reescribir todo).
+function mapRegistro(r){
+  const prob = Math.round(r.probabilidad_porcentaje);
+  return {
+    id: '#'+String(r.id).padStart(5,'0'),
+    rawId: r.id,
+    machine: `Predicción #${r.id}`,
+    type: r.tipo_producto,
+    date: new Date(r.fecha),
+    origin: r.origen === 'lote' ? 'CSV' : 'Manual',
+    status: r.nivel_riesgo,
+    prob: prob,
+    confidence: prob>80||prob<20 ? 'Alta' : (prob>55||prob<45? 'Media':'Baja'),
+    factorPrincipal: r.factor_principal,
+    factores: r.factores || []
+  };
+}
+
+async function cargarHistorialReal(){
+  try {
+    const data = await fetchJSON('/historial?limite=200');
+    HISTORY = data.registros.map(mapRegistro);
+  } catch(e){
+    console.error('No se pudo cargar el historial real:', e);
+    HISTORY = [];
   }
-})();
+  return HISTORY;
+}
+
+async function cargarMonitoreoReal(){
+  try {
+    MONITOREO = await fetchJSON('/monitoreo');
+  } catch(e){
+    console.error('No se pudo cargar el monitoreo real:', e);
+    MONITOREO = null;
+  }
+  return MONITOREO;
+}
 
 function fmtDate(d){
   const months=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -888,10 +933,13 @@ function showScreen(name){
   document.querySelectorAll('.nav-item[data-screen]').forEach(n=>n.classList.toggle('active', n.dataset.screen===name));
   document.getElementById('topbarTitle').textContent = screenTitles[name];
   window.scrollTo({top:0,behavior:'smooth'});
-  if(name==='dashboard') initDashboardCharts();
-  if(name==='monitor') initMonitorCharts();
-  if(name==='shap') { if(!shapInitialized){ populateShapSelect(); shapInitialized=true; } }
-  if(name==='history') renderHistoryTable();
+  // Cada vez que se entra a una pantalla que muestra datos reales,
+  // se vuelve a pedir el historial/monitoreo a la API (puede haber
+  // predicciones nuevas desde la última vez que se mostró).
+  if(name==='dashboard') cargarHistorialReal().then(()=>cargarMonitoreoReal()).then(()=>{ renderDashboardKPIs(); renderRecentAlerts(); renderDashboardTable(); initDashboardCharts(); });
+  if(name==='monitor') cargarMonitoreoReal().then(()=>cargarHistorialReal()).then(initMonitorCharts);
+  if(name==='shap') cargarHistorialReal().then(populateShapSelect);
+  if(name==='history') cargarHistorialReal().then(renderHistoryTable);
 }
 function closeMobileSidebar(){
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -942,12 +990,13 @@ let dashInitialized = false;
 let trendChartInstance, topRiskChartInstance;
 
 function renderDashboardKPIs(){
-  const activeAlerts = HISTORY.filter(h=>h.status!=='No falla' && h.date > new Date(2026,6,26)).length;
+  const activeAlerts = HISTORY.filter(h=>h.status!=='No falla').length;
+  const m = MONITOREO;
   const kpis = [
-    {icon:'🖥️', bg:'var(--info-bg)', value:'48', label:'Máquinas monitoreadas', variation:'▲ 2%', up:true},
-    {icon:'🔔', bg: activeAlerts>0?'var(--danger-bg)':'#F1F5F9', value:String(activeAlerts), label:'Alertas activas', variation:null, danger:activeAlerts>0},
-    {icon:'🎯', bg:'var(--success-bg)', value:'94.2%', label:'Precisión del modelo', variation:'▲ 1.1%', up:true},
-    {icon:'📄', bg:'var(--info-bg)', value:'7', label:'Archivos procesados hoy', variation:null}
+    {icon:'📊', bg:'var(--info-bg)', value: m?String(m.total_predicciones):'—', label:'Predicciones realizadas'},
+    {icon:'🔔', bg: activeAlerts>0?'var(--danger-bg)':'#F1F5F9', value:String(activeAlerts), label:'Predicciones con riesgo', danger:activeAlerts>0},
+    {icon:'📈', bg:'var(--warning-bg)', value: m?m.probabilidad_promedio+'%':'—', label:'Probabilidad de falla promedio'},
+    {icon:'🧠', bg: m && m.modelo_cargado ? 'var(--success-bg)':'var(--danger-bg)', value: m && m.modelo_cargado?'Activo':'Sin datos', label:'Estado del modelo'}
   ];
   const row = document.getElementById('dashKpiRow');
   row.innerHTML = kpis.map((k,i)=>`
@@ -1007,10 +1056,14 @@ function renderRecentAlerts(){
 
 function renderDashboardTable(){
   const rows = HISTORY.slice(0,8);
+  if(rows.length===0){
+    document.getElementById('dashSummaryTable').innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94A3B8; padding:20px;">Todavía no hay predicciones. Ve a "Predicción individual" o "Cargar archivo CSV".</td></tr>`;
+    return;
+  }
   document.getElementById('dashSummaryTable').innerHTML = rows.map(r=>`
     <tr data-id="${r.id}">
       <td style="font-weight:600;">${r.machine}</td>
-      <td style="color:var(--text-secondary);">${r.sensor}</td>
+      <td style="color:var(--text-secondary);">${r.factorPrincipal || '—'}</td>
       <td>${fmtDate(r.date)}</td>
       <td>${r.status}</td>
       <td>${r.prob}%</td>
@@ -1022,68 +1075,115 @@ function renderDashboardTable(){
 }
 
 function buildTrendData(days){
-  const labels=[]; const data=[];
-  const now = new Date(2026,6,27);
+  // Agrupa las predicciones reales por día y promedia la probabilidad de falla.
+  const labels=[]; const buckets={};
+  const now = new Date();
   for(let i=days-1;i>=0;i--){
     const d = new Date(now.getTime()-i*86400000);
-    labels.push(`${d.getDate()}/${d.getMonth()+1}`);
-    const base = 35 + 20*Math.sin(i/6) + randInt(-8,8);
-    data.push(Math.max(5,Math.min(95,Math.round(base))));
+    const key = `${d.getDate()}/${d.getMonth()+1}`;
+    labels.push(key);
+    buckets[key] = {suma:0, cantidad:0};
   }
-  return {labels,data};
+  HISTORY.forEach(h=>{
+    const key = `${h.date.getDate()}/${h.date.getMonth()+1}`;
+    if(key in buckets){ buckets[key].suma += h.prob; buckets[key].cantidad += 1; }
+  });
+  const data = labels.map(k => buckets[k].cantidad ? Math.round(buckets[k].suma/buckets[k].cantidad) : null);
+  return {labels, data};
 }
 
 function initDashboardCharts(){
   const loading = document.getElementById('trendChartLoading');
-  loading.style.display='block';
-  setTimeout(()=>{
-    loading.style.display='none';
-    const {labels,data} = buildTrendData(parseInt(document.getElementById('trendRangeSelect').value||30));
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    if(trendChartInstance) trendChartInstance.destroy();
-    trendChartInstance = new Chart(ctx,{
-      type:'line',
-      data:{labels, datasets:[{
-        label:'Riesgo promedio (%)', data, borderColor:COLORS.primary, borderWidth:2, pointRadius:0, tension:.35,
-        fill:true, backgroundColor:'rgba(29,111,224,0.08)'
-      }]},
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>`Riesgo promedio: ${ctx.parsed.y}% — 48 máquinas evaluadas`}}},
-        scales:{ y:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}} }
-      }
-    });
+  loading.style.display='none';
+  const {labels,data} = buildTrendData(parseInt(document.getElementById('trendRangeSelect').value||30));
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if(trendChartInstance) trendChartInstance.destroy();
+  trendChartInstance = new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets:[{
+      label:'Riesgo promedio (%)', data, borderColor:COLORS.primary, borderWidth:2, pointRadius:2, tension:.35,
+      fill:true, backgroundColor:'rgba(29,111,224,0.08)', spanGaps:true
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>`Riesgo promedio: ${ctx.parsed.y}%`}}},
+      scales:{ y:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}} }
+    }
+  });
 
-    const machines = MACHINE_NAMES.slice(0,5).map(m=>({m, v:randInt(35,95)})).sort((a,b)=>b.v-a.v);
-    const ctx2 = document.getElementById('topRiskChart').getContext('2d');
-    if(topRiskChartInstance) topRiskChartInstance.destroy();
-    topRiskChartInstance = new Chart(ctx2,{
-      type:'bar',
-      data:{labels:machines.map(x=>x.m), datasets:[{data:machines.map(x=>x.v),
-        backgroundColor:machines.map(x=>statusColor(statusFromProb(x.v))), borderRadius:6, barThickness:22}]},
-      options:{
-        indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>ctx.parsed.x+'% de riesgo'}}},
-        scales:{x:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, y:{grid:{display:false}}},
-        onClick:(evt,elements)=>{ if(elements.length){ showScreen('history'); document.getElementById('histSearch').value = machines[elements[0].index].m; applyHistoryFilters(); } }
-      }
-    });
-  }, 550);
+  // Top 5 predicciones (reales) con mayor probabilidad de falla
+  const topRiesgo = [...HISTORY].sort((a,b)=>b.prob-a.prob).slice(0,5);
+  const ctx2 = document.getElementById('topRiskChart').getContext('2d');
+  if(topRiskChartInstance) topRiskChartInstance.destroy();
+  topRiskChartInstance = new Chart(ctx2,{
+    type:'bar',
+    data:{labels:topRiesgo.map(x=>x.id), datasets:[{data:topRiesgo.map(x=>x.prob),
+      backgroundColor:topRiesgo.map(x=>statusColor(x.status)), borderRadius:6, barThickness:22}]},
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>ctx.parsed.x+'% de riesgo'}}},
+      scales:{x:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, y:{grid:{display:false}}},
+      onClick:(evt,elements)=>{ if(elements.length){ goToShapCase(topRiesgo[elements[0].index].id); } }
+    }
+  });
 }
 document.getElementById('trendRangeSelect').addEventListener('change', initDashboardCharts);
 
-function goToShapCase(id){
-  showScreen('shap');
+async function goToShapCase(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-shap').classList.add('active');
+  document.querySelectorAll('.nav-item[data-screen]').forEach(n=>n.classList.toggle('active', n.dataset.screen==='shap'));
+  document.getElementById('topbarTitle').textContent = screenTitles.shap;
+  window.scrollTo({top:0,behavior:'smooth'});
+  await cargarHistorialReal();
+  populateShapSelect();
   document.getElementById('shapCaseSelect').value = id;
   renderShapCase(id);
 }
 
 /* =========================================================================================
-   PANTALLA 2 — CARGAR ARCHIVO CSV
+   PANTALLA 2 — CARGAR ARCHIVO CSV (parsea el archivo en el navegador y llama
+   a POST /predict-batch con los datos reales)
    ========================================================================================= */
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 let uploadStep = 1;
+let parsedRows = [];
+
+// Columna del CSV -> nombre del campo que espera la API (backend/main.py, SensorInput)
+const CSV_COLUMN_MAP = {
+  tipo: 'type',
+  temperatura_aire_k: 'air_temperature_k',
+  temperatura_proceso_k: 'process_temperature_k',
+  velocidad_rotacion_rpm: 'rotational_speed_rpm',
+  torque_nm: 'torque_nm',
+  desgaste_herramienta_min: 'tool_wear_min',
+};
+const CSV_REQUIRED_HEADERS = Object.keys(CSV_COLUMN_MAP);
+
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/).filter(l=>l.trim()!=='');
+  if(lines.length < 1) return {headers:[], rows:[]};
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+  const rows = lines.slice(1).map(line=>{
+    const cells = line.split(',').map(c=>c.trim());
+    const obj = {};
+    headers.forEach((h,i)=>{ obj[h] = cells[i] !== undefined ? cells[i] : ''; });
+    return obj;
+  });
+  return {headers, rows};
+}
+
+function filaToSensorInput(fila){
+  return {
+    type: (fila.tipo || 'M').toUpperCase(),
+    air_temperature_k: parseFloat(fila.temperatura_aire_k),
+    process_temperature_k: parseFloat(fila.temperatura_proceso_k),
+    rotational_speed_rpm: parseFloat(fila.velocidad_rotacion_rpm),
+    torque_nm: parseFloat(fila.torque_nm),
+    tool_wear_min: parseFloat(fila.desgaste_herramienta_min),
+  };
+}
 
 function setUploadStep(n){
   uploadStep = n;
@@ -1105,7 +1205,9 @@ dropzone.addEventListener('drop', e=>{
 fileInput.addEventListener('change', e=>{ if(e.target.files.length) handleFileSelected(e.target.files[0]); });
 
 document.getElementById('btnDownloadTemplate').addEventListener('click', ()=>{
-  const csv = "maquina,tipo,temperatura,vibracion,presion,horas_uso,humedad\nCompresor 01,Compresor,32.5,4.2,6.1,850,45\nMotor B-12,Motor eléctrico,41.0,7.8,5.4,1200,38\n";
+  const csv = "tipo,temperatura_aire_k,temperatura_proceso_k,velocidad_rotacion_rpm,torque_nm,desgaste_herramienta_min\n"
+    + "M,298.1,308.6,1551,42.8,108\n"
+    + "L,303.5,312.0,1350,68.5,220\n";
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download='plantilla_perfectime.csv'; a.click();
@@ -1127,40 +1229,57 @@ function handleFileSelected(file){
   document.getElementById('uploadDropzoneWrap').style.display='none';
   document.getElementById('uploadFileCardWrap').style.display='block';
   document.getElementById('fcFileName').textContent = file.name;
-  document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Subiendo...';
+  document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Leyendo archivo...';
   const fill = document.getElementById('fcProgressFill');
-  fill.style.width='0%';
-  let pct=0;
-  const uploadInterval = setInterval(()=>{
-    pct += randInt(10,22);
-    if(pct>=100){ pct=100; clearInterval(uploadInterval); onUploadComplete(file); }
-    fill.style.width=pct+'%';
-    document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Subiendo... '+pct+'%';
-  }, 200);
+  fill.style.width='60%';
+
+  const reader = new FileReader();
+  reader.onload = () => onUploadComplete(file, reader.result);
+  reader.onerror = () => {
+    document.getElementById('uploadMessages').innerHTML = `<div class="banner danger">❌ No se pudo leer el archivo.</div>`;
+  };
+  reader.readAsText(file);
 }
 
-function onUploadComplete(file){
-  document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB — Validando estructura del archivo...';
-  setTimeout(()=>{
-    document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB · Validado';
-    setUploadStep(2);
-    showPreview();
-    showToast('success', `Archivo cargado correctamente: ${1204} registros detectados.`);
-  }, 700);
-}
-
-function showPreview(){
-  const cols = ['ID','Máquina','Temperatura','Vibración','Presión','Horas de uso','Fecha'];
-  document.getElementById('previewTableHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
-  let rows='';
-  for(let i=0;i<8;i++){
-    rows += `<tr>
-      <td>#${20000+i}</td><td>${pick(MACHINE_NAMES)}</td><td>${roundTo(20+rand()*30,1)}°C</td>
-      <td>${roundTo(rand()*10,1)} mm/s</td><td>${roundTo(3+rand()*6,1)} bar</td><td>${randInt(200,1800)} h</td>
-      <td>27/07/2026</td></tr>`;
+function onUploadComplete(file, contenido){
+  document.getElementById('fcProgressFill').style.width='100%';
+  const {headers, rows} = parseCSV(contenido);
+  const faltantes = CSV_REQUIRED_HEADERS.filter(h=>!headers.includes(h));
+  if(faltantes.length > 0){
+    // Importante: primero resetear la pantalla y RECIÉN DESPUÉS escribir el
+    // mensaje de error — si se hace al revés, resetUploadScreen() borra el
+    // mensaje que se acaba de mostrar (uploadMessages.innerHTML='') y queda
+    // como si no hubiera pasado nada.
+    resetUploadScreen();
+    document.getElementById('uploadMessages').innerHTML = `<div class="banner danger">❌ El archivo no tiene las columnas esperadas. Faltan: ${faltantes.join(', ')}. <span class="banner-link" id="viewTemplateLink2">Descargar plantilla</span></div>`;
+    document.getElementById('viewTemplateLink2').addEventListener('click', ()=>document.getElementById('btnDownloadTemplate').click());
+    return;
   }
-  document.getElementById('previewTableBody').innerHTML = rows;
-  document.getElementById('previewWarningBanner').innerHTML = `<div class="banner warning">⚠️ Se detectaron 12 valores faltantes en la columna 'Vibración'. El sistema los completará automáticamente antes de predecir.</div>`;
+  if(rows.length === 0){
+    resetUploadScreen();
+    document.getElementById('uploadMessages').innerHTML = `<div class="banner danger">❌ El archivo no tiene filas de datos (solo el encabezado).</div>`;
+    return;
+  }
+  parsedRows = rows;
+  document.getElementById('fcFileMeta').textContent = (file.size/1024/1024).toFixed(1)+' MB · Validado';
+  setUploadStep(2);
+  showPreview(rows);
+  showToast('success', `Archivo cargado correctamente: ${rows.length} registros detectados.`);
+}
+
+function showPreview(rows){
+  const cols = CSV_REQUIRED_HEADERS;
+  document.getElementById('previewTableHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  const muestra = rows.slice(0, 8);
+  document.getElementById('previewTableBody').innerHTML = muestra.map(r=>
+    `<tr>${cols.map(c=>`<td>${r[c] ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  document.getElementById('previewSubtitle').textContent = `Mostrando ${muestra.length} de ${rows.length} registros`;
+
+  const filasInvalidas = rows.filter(r => cols.some(c => r[c] === '' || r[c] === undefined));
+  document.getElementById('previewWarningBanner').innerHTML = filasInvalidas.length > 0
+    ? `<div class="banner warning">⚠️ ${filasInvalidas.length} fila(s) tienen valores vacíos y la API las va a rechazar. Revisa el archivo antes de continuar.</div>`
+    : '';
   document.getElementById('previewSection').style.display='block';
   setUploadStep(3);
 }
@@ -1175,14 +1294,23 @@ function resetUploadScreen(){
   document.getElementById('analysisSuccessBanner').style.display='none';
   document.getElementById('uploadMessages').innerHTML='';
   fileInput.value='';
+  parsedRows = [];
   setUploadStep(1);
 }
 
-document.getElementById('btnAnalyzeData').addEventListener('click', ()=>{
+document.getElementById('btnAnalyzeData').addEventListener('click', async ()=>{
   const btn = document.getElementById('btnAnalyzeData');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Analizando...';
   document.getElementById('analyzingOverlay').style.display='flex';
-  setTimeout(()=>{
+
+  try {
+    const registros = parsedRows.map(filaToSensorInput);
+    const data = await fetchJSON('/predict-batch', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(registros),
+    });
+
     document.getElementById('analyzingOverlay').style.display='none';
     btn.disabled=false; btn.innerHTML='⚡ Analizar datos';
     setUploadStep(4);
@@ -1190,12 +1318,16 @@ document.getElementById('btnAnalyzeData').addEventListener('click', ()=>{
     document.getElementById('analysisSuccessBanner').style.display='block';
     document.getElementById('analysisSuccessBanner').innerHTML = `
       <div class="banner success" style="flex-direction:column; align-items:flex-start; gap:10px;">
-        <div>✅ Análisis completado. Se generaron 1,204 nuevas predicciones.</div>
-        <button class="btn-primary-p" id="btnViewResults">Ver resultados</button>
+        <div>✅ Análisis completado con el modelo real. ${data.total_registros} predicciones generadas — ${data.fallas_detectadas} con falla detectada (probabilidad promedio ${data.probabilidad_promedio}%).</div>
+        <button class="btn-primary-p" id="btnViewResults">Ver resultados en Historial</button>
       </div>`;
     document.getElementById('btnViewResults').addEventListener('click', ()=>{ showScreen('history'); resetUploadScreen(); });
     showToast('success','Análisis completado correctamente.');
-  }, 1800);
+  } catch(error){
+    document.getElementById('analyzingOverlay').style.display='none';
+    btn.disabled=false; btn.innerHTML='⚡ Analizar datos';
+    showToast('error', `No se pudo analizar el archivo: ${error.message}`, true);
+  }
 });
 
 /* =========================================================================================
@@ -1260,7 +1392,7 @@ document.getElementById('btnClearForm').addEventListener('click', ()=>{
   document.getElementById('predictValidationMsg').style.display='none';
 });
 
-let lastPredictCase = null;
+let lastPredictId = null;
 async function runPrediction(){
   // ---- 1. Recolección y validación de los valores del formulario ----
   const values = {};
@@ -1312,7 +1444,7 @@ async function runPrediction(){
 
     const prob   = Math.round(data.probabilidad_porcentaje);
     const status = data.nivel_riesgo;
-    lastPredictCase = {prob, status, values};
+    lastPredictId = data.id != null ? '#'+String(data.id).padStart(5,'0') : null;
 
     document.getElementById('predictResultState').style.display='block';
     const badge = document.getElementById('predictBadge');
@@ -1344,8 +1476,7 @@ async function runPrediction(){
 document.getElementById('btnPredict').addEventListener('click', runPrediction);
 document.getElementById('btnRetryPredict').addEventListener('click', runPrediction);
 document.getElementById('btnGoShapFromPredict').addEventListener('click', ()=>{
-  showScreen('shap');
-  renderShapCase(null, lastPredictCase);
+  if(lastPredictId){ goToShapCase(lastPredictId); } else { showScreen('shap'); }
 });
 
 let gaugeChartInstance;
@@ -1365,113 +1496,101 @@ function drawGauge(prob){
 }
 
 /* =========================================================================================
-   PANTALLA 4 — EXPLICABILIDAD SHAP
+   PANTALLA 4 — EXPLICABILIDAD SHAP (usa el campo "factores" que devuelve la API,
+   calculado con SHAP de verdad en el backend — ver calcular_factores_lote en main.py)
    ========================================================================================= */
-let shapInitialized = false;
 let shapWaterfallInstance, compareChartAInstance, compareChartBInstance;
-
-const SHAP_VAR_DEFS = [
-  {key:'Vibración', unit:'mm/s'}, {key:'Horas de uso', unit:'h'}, {key:'Temperatura', unit:'°C'},
-  {key:'Presión', unit:'bar'}, {key:'Humedad', unit:'%'}
-];
-function generateShapForCase(caseObj){
-  const base = 20;
-  const vars = SHAP_VAR_DEFS.map(v=>{
-    const impact = roundTo((rand()-0.35)*30, 1);
-    let val;
-    if(v.key==='Vibración') val = roundTo(2+rand()*8,1);
-    else if(v.key==='Horas de uso') val = randInt(200,2200);
-    else if(v.key==='Temperatura') val = roundTo(20+rand()*35,1);
-    else if(v.key==='Presión') val = roundTo(2+rand()*8,1);
-    else val = randInt(15,80);
-    return {name:v.key, unit:v.unit, value:val, impact};
-  }).sort((a,b)=>Math.abs(b.impact)-Math.abs(a.impact));
-  let running = base;
-  const waterfallData = vars.map(v=>{
-    const from = running; running += v.impact; return {...v, from, to:running};
-  });
-  const finalVal = Math.max(2,Math.min(98, Math.round(running)));
-  return {base, vars: waterfallData, final: finalVal};
-}
 
 function populateShapSelect(){
   const sel = document.getElementById('shapCaseSelect');
-  sel.innerHTML = HISTORY.slice(0,30).map(h=>`<option value="${h.id}">${h.machine} — ${h.id} (${fmtDate(h.date)})</option>`).join('');
-  sel.addEventListener('change', ()=>renderShapCase(sel.value));
   const compSel = document.getElementById('compareCaseBSelect');
-  compSel.innerHTML = HISTORY.slice(0,30).map(h=>`<option value="${h.id}">${h.machine} — ${h.id}</option>`).join('');
-  compSel.addEventListener('change', ()=>renderCompareChart('B', compSel.value));
-  renderShapCase(HISTORY[2].id);
+
+  if(HISTORY.length === 0){
+    sel.innerHTML = '<option value="">Sin predicciones todavía</option>';
+    compSel.innerHTML = '<option value="">Sin predicciones todavía</option>';
+    document.getElementById('shapMachineName').textContent = 'Sin datos';
+    document.getElementById('shapCaseMeta').textContent = 'Ve a "Predicción individual" o "Cargar archivo CSV" para generar una predicción primero.';
+    document.getElementById('shapFactorList').innerHTML = '';
+    document.getElementById('shapConfidenceBanner').innerHTML = '';
+    if(shapWaterfallInstance){ shapWaterfallInstance.destroy(); shapWaterfallInstance = null; }
+    return;
+  }
+
+  sel.innerHTML = HISTORY.map(h=>`<option value="${h.id}">${h.id} — ${h.status} (${fmtDate(h.date)})</option>`).join('');
+  sel.onchange = ()=>renderShapCase(sel.value);
+  compSel.innerHTML = HISTORY.map(h=>`<option value="${h.id}">${h.id} — ${h.status}</option>`).join('');
+  compSel.onchange = ()=>renderCompareChart('B', compSel.value);
+  renderShapCase(HISTORY[0].id);
 }
 
-function renderShapCase(id, customCase){
-  let caseData;
-  if(customCase){
-    caseData = {id:'#MANUAL', machine: document.getElementById('pMachineType').value+' (manual)', date:new Date(2026,6,27,14,32),
-      status: customCase.status, prob: customCase.prob};
-  } else {
-    caseData = HISTORY.find(h=>h.id===id) || HISTORY[0];
-  }
+function renderShapCase(id){
+  const caseData = HISTORY.find(h=>h.id===id) || HISTORY[0];
+  if(!caseData) return;
+  document.getElementById('shapCaseSelect').value = caseData.id;
   document.getElementById('shapMachineName').textContent = caseData.machine;
-  document.getElementById('shapCaseMeta').textContent = `ID ${caseData.id} — ${fmtDate(caseData.date)}`;
+  document.getElementById('shapCaseMeta').textContent = `${caseData.id} — ${fmtDate(caseData.date)} — Origen: ${caseData.origin}`;
   const badge = document.getElementById('shapResultBadge');
   badge.textContent = caseData.status; badge.className='badge-status '+levelFromStatus(caseData.status);
   document.getElementById('shapProbText').textContent = caseData.prob+'%';
   document.getElementById('shapProbText').style.color = statusColor(caseData.status);
 
-  const confidence = caseData.prob>80||caseData.prob<20?'Alta':(caseData.prob>55||caseData.prob<45?'Media':'Baja');
-  document.getElementById('shapConfidenceText').textContent = confidence;
-  const bars = confidence==='Alta'?5:(confidence==='Media'?3:1);
+  document.getElementById('shapConfidenceText').textContent = caseData.confidence;
+  const bars = caseData.confidence==='Alta'?5:(caseData.confidence==='Media'?3:1);
   document.getElementById('shapConfidenceBar').innerHTML = Array.from({length:5},(_,i)=>`<span class="${i<bars?'filled':''}"></span>`).join('');
 
   const banner = document.getElementById('shapConfidenceBanner');
-  banner.innerHTML = confidence!=='Alta' ? `<div class="banner warning">⚠️ Esta predicción tiene un nivel de confianza ${confidence.toLowerCase()}. Se recomienda revisión manual.</div>` : '';
+  banner.innerHTML = caseData.confidence!=='Alta' ? `<div class="banner warning">⚠️ Esta predicción tiene un nivel de confianza ${caseData.confidence.toLowerCase()}. Se recomienda revisión manual.</div>` : '';
 
-  const shap = generateShapForCase(caseData);
-  document.getElementById('shapBaseVal').textContent = shap.base+'%';
   document.getElementById('shapFinalVal').textContent = caseData.prob+'%';
 
-  renderWaterfall(shap);
-  renderFactorList(shap);
+  renderWaterfall(caseData.factores);
+  renderFactorList(caseData.factores);
 }
 
-function renderWaterfall(shap){
+// El "aporte" de cada variable son los valores SHAP reales que calcula el
+// backend (TreeExplainer sobre XGBoost, mismo cálculo que en el notebook,
+// sección 9). No son puntos porcentuales, son el aporte en la escala interna
+// del modelo: positivo = empuja hacia "Falla", negativo = empuja hacia "No falla".
+function renderWaterfall(factores){
   const ctx = document.getElementById('shapWaterfallChart').getContext('2d');
   if(shapWaterfallInstance) shapWaterfallInstance.destroy();
+  if(!factores || factores.length===0) return;
   shapWaterfallInstance = new Chart(ctx,{
     type:'bar',
     data:{
-      labels: shap.vars.map(v=>`${v.name} (${v.value}${v.unit})`),
+      labels: factores.map(f=>`${f.etiqueta} (${f.valor})`),
       datasets:[{
-        data: shap.vars.map(v=>[v.from,v.to]),
-        backgroundColor: shap.vars.map(v=>v.impact>=0?COLORS.danger:COLORS.success),
+        data: factores.map(f=>f.contribucion),
+        backgroundColor: factores.map(f=>f.efecto==='aumenta'?COLORS.danger:COLORS.success),
         borderRadius:4, barThickness:26
       }]
     },
     options:{
       indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}, tooltip:{callbacks:{label:(ctx)=>{
-        const v = shap.vars[ctx.dataIndex];
-        return `${v.impact>=0?'+':''}${v.impact} puntos porcentuales`;
+        const f = factores[ctx.dataIndex];
+        return `${f.contribucion>=0?'+':''}${f.contribucion} (${f.efecto} el riesgo)`;
       }}}},
-      scales:{x:{min:0,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, y:{grid:{display:false}}}
+      scales:{x:{grid:{color:COLORS.grid}}, y:{grid:{display:false}}}
     }
   });
 }
-function renderFactorList(shap){
-  document.getElementById('shapFactorList').innerHTML = shap.vars.map(v=>{
-    const up = v.impact>=0;
-    const phrase = up
-      ? `${v.name} ${v.name==='Vibración'?'elevada':'alta'} (${v.value}${v.unit}) ${Math.abs(v.impact)>10?'es uno de los factores que más aumenta':'aumenta'} el riesgo de falla.`
-      : `${v.name} dentro de rango normal (${v.value}${v.unit}) ayuda a reducir el riesgo.`;
+function renderFactorList(factores){
+  if(!factores || factores.length===0){
+    document.getElementById('shapFactorList').innerHTML = '<div style="color:#94A3B8; padding:12px;">No hay desglose SHAP disponible para este caso.</div>';
+    return;
+  }
+  document.getElementById('shapFactorList').innerHTML = factores.map(f=>{
+    const up = f.efecto === 'aumenta';
     return `<div class="shap-factor-item">
       <div class="shap-ico ${up?'up':'down'}">${up?'↑':'↓'}</div>
-      <div style="font-size:13.5px;">${up?'🔴':'🟢'} ${phrase}</div>
+      <div style="font-size:13.5px;">${up?'🔴':'🟢'} ${f.etiqueta} = ${f.valor} ${up?'aumenta':'reduce'} el riesgo (aporte SHAP: ${f.contribucion}).</div>
     </div>`;
   }).join('');
 }
 
 document.getElementById('btnCompareCase').addEventListener('click', ()=>{
+  if(HISTORY.length === 0) return;
   document.getElementById('shapCompareWrap').style.display='block';
   const currentId = document.getElementById('shapCaseSelect').value;
   renderCompareChart('A', currentId);
@@ -1483,166 +1602,227 @@ document.getElementById('btnCloseCompare').addEventListener('click', ()=>{
 });
 function renderCompareChart(slot, id){
   const caseData = HISTORY.find(h=>h.id===id) || HISTORY[0];
-  document.getElementById('compareCaseA_meta').textContent = slot==='A' ? `${caseData.machine} — ${caseData.status} (${caseData.prob}%)` : document.getElementById('compareCaseA_meta').textContent;
-  const shap = generateShapForCase(caseData);
+  if(!caseData) return;
+  if(slot==='A'){ document.getElementById('compareCaseA_meta').textContent = `${caseData.id} — ${caseData.status} (${caseData.prob}%)`; }
+  const factores = caseData.factores || [];
   const canvasId = slot==='A'?'compareChartA':'compareChartB';
   const ctx = document.getElementById(canvasId).getContext('2d');
   const cfg = {
     type:'bar',
-    data:{labels: shap.vars.map(v=>v.name), datasets:[{data:shap.vars.map(v=>[v.from,v.to]),
-      backgroundColor: shap.vars.map(v=>v.impact>=0?COLORS.danger:COLORS.success), borderRadius:4, barThickness:18}]},
+    data:{labels: factores.map(f=>f.etiqueta), datasets:[{data:factores.map(f=>f.contribucion),
+      backgroundColor: factores.map(f=>f.efecto==='aumenta'?COLORS.danger:COLORS.success), borderRadius:4, barThickness:18}]},
     options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{x:{min:0,max:100, grid:{color:COLORS.grid}}, y:{grid:{display:false}}}}
+      scales:{x:{grid:{color:COLORS.grid}}, y:{grid:{display:false}}}}
   };
   if(slot==='A'){ if(compareChartAInstance) compareChartAInstance.destroy(); compareChartAInstance = new Chart(ctx,cfg); }
   else { if(compareChartBInstance) compareChartBInstance.destroy(); compareChartBInstance = new Chart(ctx,cfg); }
 }
 
 document.getElementById('btnExportShap').addEventListener('click', function(){
-  const btn=this; const original=btn.innerHTML;
-  btn.innerHTML='<span class="spin dark"></span> Generando...'; btn.disabled=true;
-  showToast('info','Generando PDF...');
-  setTimeout(()=>{
-    btn.innerHTML=original; btn.disabled=false;
-    showToast('success','PDF descargado.');
-  }, 1200);
+  showToast('info','Exportar a PDF todavía no está implementado — queda como mejora futura.');
 });
 
 /* =========================================================================================
-   PANTALLA 5 — MONITOREO
+   PANTALLA 5 — MONITOREO (usa /monitoreo y /historial de la API)
    ========================================================================================= */
-let precisionChartInstance, responseChartInstance;
-const MONITOR_FILES = Array.from({length:14}, (_,i)=>{
-  const ok = rand()>0.15;
-  const warn = ok && rand()>0.75;
-  return {
-    name: `sensores_planta_${String.fromCharCode(65+i%5)}_${String(i+1).padStart(2,'0')}.csv`,
-    date: new Date(2026,6,27-i,randInt(7,19),randInt(0,59)),
-    records: randInt(300,2200),
-    status: !ok?'Error':(warn?'Con advertencias':'Éxito'),
-    duration: roundTo(0.8+rand()*4,1)
-  };
-});
-const SYSTEM_ALERTS = [
-  {sev:'warning', text:'Modelo no actualizado hace 45 días — se recomienda reentrenamiento.', date:'25 jul 2026'},
-  {sev:'danger', text:'Tiempo de respuesta promedio superó el umbral de 3s durante 2 horas.', date:'24 jul 2026'},
-  {sev:'info', text:'Nuevo tipo de sensor "Humedad" incorporado al pipeline de datos.', date:'20 jul 2026'},
-  {sev:'warning', text:'Se detectó drift moderado en la distribución de la variable Vibración.', date:'18 jul 2026'},
-];
+let riesgoChartInstance, origenChartInstance;
 
 function renderMonitorKPIs(){
-  const kpis = [
-    {icon:'🎯', bg:'var(--success-bg)', value:'94.2%', label:'Precisión actual del modelo', variation:'▲ 1.1%', up:true},
-    {icon:'⏱️', bg:'var(--info-bg)', value:'1.8 s', label:'Tiempo promedio de respuesta', variation:'▼ 0.3s', up:false},
-    {icon:'📄', bg:'var(--info-bg)', value:'132', label:'Archivos procesados (período)', variation:null},
-    {icon:'🔺', bg:'var(--warning-bg)', value:'27', label:'Alertas generadas (período)', variation:'▲ 5', up:true}
+  const m = MONITOREO;
+  const kpis = m ? [
+    {icon:'📊', bg:'var(--info-bg)', value:String(m.total_predicciones), label:'Predicciones totales'},
+    {icon:'🔺', bg: m.fallas_detectadas>0?'var(--danger-bg)':'#F1F5F9', value:String(m.fallas_detectadas), label:'Fallas detectadas'},
+    {icon:'📈', bg:'var(--warning-bg)', value:m.probabilidad_promedio+'%', label:'Probabilidad promedio'},
+    {icon:'🧠', bg: m.shap_disponible?'var(--success-bg)':'var(--danger-bg)', value: m.shap_disponible?'Sí':'No', label:'Explicabilidad SHAP disponible'}
+  ] : [
+    {icon:'📊', bg:'#F1F5F9', value:'—', label:'Predicciones totales'},
+    {icon:'🔺', bg:'#F1F5F9', value:'—', label:'Fallas detectadas'},
+    {icon:'📈', bg:'#F1F5F9', value:'—', label:'Probabilidad promedio'},
+    {icon:'🧠', bg:'#F1F5F9', value:'—', label:'Explicabilidad SHAP disponible'}
   ];
   document.getElementById('monitorKpiRow').innerHTML = kpis.map(k=>`
     <div class="card-p kpi-card">
       <div class="kpi-icon" style="background:${k.bg};">${k.icon}</div>
       <div><div class="kpi-value">${k.value}</div><div class="kpi-label">${k.label}</div></div>
-      ${k.variation?`<div class="kpi-variation ${k.up?'up':'down'}">${k.variation}</div>`:''}
     </div>`).join('');
-  document.getElementById('monitorAccuracyBanner').innerHTML = `<div class="banner warning">⚠️ La precisión del modelo bajó 3% esta semana. Se recomienda reentrenamiento.</div>`;
+  document.getElementById('monitorAccuracyBanner').innerHTML = (!m || m.total_predicciones===0)
+    ? `<div class="banner warning">⚠️ Todavía no hay predicciones registradas para mostrar estadísticas.</div>` : '';
 }
 
-function renderMonitorFiles(filterText){
-  filterText = (filterText||'').toLowerCase();
-  const rows = MONITOR_FILES.filter(f=>f.name.toLowerCase().includes(filterText));
-  const tbody = document.getElementById('monitorFilesTable');
-  if(rows.length===0){ tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94A3B8; padding:24px;">No se encontraron archivos que coincidan con la búsqueda.</td></tr>`; return; }
-  tbody.innerHTML = rows.map((f,idx)=>`
-    <tr data-idx="${idx}">
-      <td>📄 ${f.name}</td><td>${fmtDate(f.date)}</td><td>${f.records.toLocaleString('es-CL')}</td>
-      <td><span class="badge-status ${f.status==='Éxito'?'success':(f.status==='Error'?'danger':'warning')}">${f.status}</span></td>
-      <td>${f.duration} s</td>
-    </tr>`).join('');
-  tbody.querySelectorAll('tr').forEach((tr,idx)=>{
-    tr.addEventListener('click', ()=>openFileDrawer(rows[idx]));
-  });
+function renderMonitorOrigen(){
+  const m = MONITOREO;
+  const porOrigen = m ? m.predicciones_por_origen : {};
+  const filas = [
+    ['Predicción individual', porOrigen.individual || 0],
+    ['Carga de archivo CSV', porOrigen.lote || 0],
+  ];
+  document.getElementById('monitorOrigenTable').innerHTML = filas.map(([nombre,n])=>`
+    <tr><td>${nombre}</td><td>${n}</td></tr>`).join('');
 }
-document.getElementById('monitorFileSearch').addEventListener('input', e=>renderMonitorFiles(e.target.value));
 
-function openFileDrawer(f){
-  document.getElementById('drawerContent').innerHTML = `
-    <div style="margin-bottom:14px;"><span class="badge-status ${f.status==='Éxito'?'success':(f.status==='Error'?'danger':'warning')}">${f.status}</span></div>
-    <div style="font-size:13.5px; line-height:1.9;">
-      <div><strong>Archivo:</strong> ${f.name}</div>
-      <div><strong>Fecha de procesamiento:</strong> ${fmtDate(f.date)}</div>
-      <div><strong>Registros procesados:</strong> ${f.records.toLocaleString('es-CL')}</div>
-      <div><strong>Duración:</strong> ${f.duration} s</div>
-    </div>
-    <hr>
-    <div style="font-size:12.5px; color:var(--text-secondary); font-weight:700; margin-bottom:8px;">LOG RESUMIDO</div>
-    <div style="font-family:monospace; font-size:12px; background:#F9FAFB; border-radius:8px; padding:12px; color:#475569; line-height:1.7;">
-      [OK] Archivo recibido y validado.<br>
-      [OK] Columnas verificadas correctamente.<br>
-      ${f.status==='Con advertencias'?'[WARN] Se completaron valores faltantes automáticamente.<br>':''}
-      ${f.status==='Error'?'[ERROR] Columna "vibracion" no encontrada en el archivo.<br>':'[OK] Predicciones generadas correctamente.<br>'}
-    </div>`;
-  document.getElementById('drawerOverlay').classList.add('show');
-  document.getElementById('fileDrawer').classList.add('show');
-}
-document.getElementById('btnCloseDrawer').addEventListener('click', closeDrawer);
-document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
-function closeDrawer(){ document.getElementById('drawerOverlay').classList.remove('show'); document.getElementById('fileDrawer').classList.remove('show'); }
-
+// Reutiliza el mismo espacio de "Alertas del sistema" para mostrar las
+// predicciones reales más recientes con riesgo (Falla o Riesgo medio).
 function renderSystemAlerts(){
-  const sevMap = {info:{bg:COLORS.primary,ic:'ℹ️'}, warning:{bg:COLORS.warning,ic:'⚠️'}, danger:{bg:COLORS.danger,ic:'🚨'}};
-  document.getElementById('systemAlertsList').innerHTML = SYSTEM_ALERTS.map((a,i)=>`
-    <div class="alert-list-item" data-idx="${i}">
-      <div class="severity-dot" style="background:${sevMap[a.sev].bg};">${sevMap[a.sev].ic}</div>
-      <div style="flex:1;">${a.text}</div>
-      <div style="font-size:12px; color:var(--text-secondary); white-space:nowrap;">${a.date}</div>
-      <button class="btn-ghost-p" style="font-size:11.5px; padding:4px 8px;" data-review="${i}">✓ Marcar como revisado</button>
+  const alertas = HISTORY.filter(h=>h.status!=='No falla').slice(0,8);
+  const sevMap = {'Falla':{bg:COLORS.danger,ic:'🚨'}, 'Riesgo medio':{bg:COLORS.warning,ic:'⚠️'}};
+  if(alertas.length===0){
+    document.getElementById('systemAlertsList').innerHTML = `<div class="empty-state" style="padding:30px 10px;"><div class="es-icon">✅</div><div>No hay predicciones con riesgo registradas todavía.</div></div>`;
+    return;
+  }
+  document.getElementById('systemAlertsList').innerHTML = alertas.map(a=>`
+    <div class="alert-list-item" data-id="${a.id}">
+      <div class="severity-dot" style="background:${sevMap[a.status].bg};">${sevMap[a.status].ic}</div>
+      <div style="flex:1;">${a.id} — ${a.status} (${a.prob}%), factor principal: ${a.factorPrincipal || '—'}</div>
+      <div style="font-size:12px; color:var(--text-secondary); white-space:nowrap;">${fmtDate(a.date)}</div>
+      <button class="btn-ghost-p" style="font-size:11.5px; padding:4px 8px;" data-view="${a.id}">👁️ Ver SHAP</button>
     </div>`).join('');
-  document.querySelectorAll('[data-review]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const item = btn.closest('.alert-list-item');
-      item.style.opacity='0.45';
-      btn.textContent='✓ Revisado'; btn.disabled=true;
-    });
+  document.querySelectorAll('#systemAlertsList [data-view]').forEach(btn=>{
+    btn.addEventListener('click', ()=>goToShapCase(btn.dataset.view));
   });
+}
+
+// Columnas del CSV de reentrenamiento -> campos que espera POST /reentrenar
+// (son los mismos de SensorInput más fallo_real, el resultado verdadero).
+const RETRAIN_REQUIRED_HEADERS = ['tipo','temperatura_aire_k','temperatura_proceso_k','velocidad_rotacion_rpm','torque_nm','desgaste_herramienta_min','fallo_real'];
+let retrainRows = [];
+
+function filaToRegistroHistorico(fila){
+  return {
+    type: (fila.tipo || 'M').toUpperCase(),
+    air_temperature_k: parseFloat(fila.temperatura_aire_k),
+    process_temperature_k: parseFloat(fila.temperatura_proceso_k),
+    rotational_speed_rpm: parseFloat(fila.velocidad_rotacion_rpm),
+    torque_nm: parseFloat(fila.torque_nm),
+    tool_wear_min: parseFloat(fila.desgaste_herramienta_min),
+    fallo_real: parseInt(fila.fallo_real, 10),
+  };
+}
+
+document.getElementById('btnDownloadRetrainTemplate').addEventListener('click', ()=>{
+  const csv = "tipo,temperatura_aire_k,temperatura_proceso_k,velocidad_rotacion_rpm,torque_nm,desgaste_herramienta_min,fallo_real\n"
+    + "M,298.1,308.6,1551,42.8,108,0\n"
+    + "L,305.0,313.0,1340,70.0,230,1\n";
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='plantilla_reentrenamiento.csv'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btnSelectRetrainFile').addEventListener('click', ()=>document.getElementById('retrainFileInput').click());
+document.getElementById('retrainFileInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const {headers, rows} = parseCSV(reader.result);
+    const faltantes = RETRAIN_REQUIRED_HEADERS.filter(h=>!headers.includes(h));
+    const msgBox = document.getElementById('retrainMessages');
+    msgBox.innerHTML = '';
+    retrainRows = [];
+    document.getElementById('btnRetrain').disabled = true;
+    if(faltantes.length > 0){
+      msgBox.innerHTML = `<div class="banner danger">❌ Faltan columnas en el archivo: ${faltantes.join(', ')}.</div>`;
+      return;
+    }
+    if(rows.length < 10){
+      msgBox.innerHTML = `<div class="banner warning">⚠️ Se necesitan al menos 10 registros para reentrenar (este archivo tiene ${rows.length}).</div>`;
+      return;
+    }
+    retrainRows = rows;
+    document.getElementById('retrainFileName').textContent = `${file.name} (${rows.length} registros)`;
+    document.getElementById('btnRetrain').disabled = false;
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('btnRetrain').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnRetrain');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Reentrenando...';
+  document.getElementById('retrainMessages').innerHTML = '';
+  try {
+    const registros = retrainRows.map(filaToRegistroHistorico);
+    const data = await fetchJSON('/reentrenar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(registros),
+    });
+    const m = data.metricas_modelo_nuevo;
+    const resultBox = document.getElementById('retrainResult');
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = `
+      <div class="banner success" style="flex-direction:column; align-items:flex-start; gap:6px;">
+        <div>✅ Modelo reentrenado con ${data.registros_nuevos} registros nuevos (${data.total_registros_entrenamiento} registros de entrenamiento en total).</div>
+        <div style="font-size:12.5px;">Accuracy: ${(m.accuracy*100).toFixed(2)}% · Precision: ${(m.precision*100).toFixed(2)}% · Recall: ${(m.recall*100).toFixed(2)}% · F1-Score: ${(m.f1*100).toFixed(2)}% · AUC-ROC: ${m.auc_roc}</div>
+      </div>`;
+    showToast('success', 'Modelo reentrenado correctamente.');
+    retrainRows = [];
+    document.getElementById('retrainFileInput').value = '';
+    document.getElementById('retrainFileName').textContent = '';
+    await renderRetrainHistory();
+    await cargarMonitoreoReal();
+    renderMonitorKPIs();
+  } catch(error){
+    document.getElementById('retrainMessages').innerHTML = `<div class="banner danger">❌ No se pudo reentrenar: ${error.message}</div>`;
+  } finally {
+    btn.disabled = true; btn.innerHTML = '🔄 Reentrenar modelo';
+  }
+});
+
+async function renderRetrainHistory(){
+  const tbody = document.getElementById('retrainHistoryTable');
+  try {
+    const data = await fetchJSON('/reentrenamientos?limite=10');
+    const filas = data.registros;
+    if(filas.length === 0){
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94A3B8; padding:16px;">Todavía no se ha reentrenado el modelo.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filas.map(f=>`
+      <tr>
+        <td>${fmtDate(new Date(f.fecha))}</td>
+        <td>${f.registros_nuevos}</td>
+        <td>${f.total_registros_entrenamiento}</td>
+        <td>${(f.accuracy*100).toFixed(2)}%</td>
+        <td>${(f.f1*100).toFixed(2)}%</td>
+        <td>${f.auc_roc}</td>
+      </tr>`).join('');
+  } catch(e){
+    console.error('No se pudo cargar el historial de reentrenamientos:', e);
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94A3B8; padding:16px;">No se pudo cargar el historial de reentrenamientos.</td></tr>`;
+  }
 }
 
 function initMonitorCharts(){
   renderMonitorKPIs();
-  renderMonitorFiles('');
+  renderMonitorOrigen();
   renderSystemAlerts();
-  const days=30; const labels=[]; const precisionData=[]; const now=new Date(2026,6,27);
-  for(let i=days-1;i>=0;i--){
-    const d=new Date(now.getTime()-i*86400000); labels.push(`${d.getDate()}/${d.getMonth()+1}`);
-    let v = 93+Math.sin(i/5)*3+randInt(-2,2);
-    if(i>18 && i<22) v -= 6; // caída bajo umbral simulada
-    precisionData.push(Math.round(Math.max(78,Math.min(99,v))));
-  }
+  renderRetrainHistory();
+
+  const m = MONITOREO;
+  const porRiesgo = m ? m.predicciones_por_riesgo : {};
+  const riesgoLabels = ['No falla','Riesgo medio','Falla'];
+  const riesgoData = riesgoLabels.map(l=>porRiesgo[l] || 0);
   const ctx = document.getElementById('precisionChart').getContext('2d');
-  if(precisionChartInstance) precisionChartInstance.destroy();
-  precisionChartInstance = new Chart(ctx,{
-    type:'line',
-    data:{labels, datasets:[
-      {label:'Precisión', data:precisionData, borderColor:COLORS.primary, segment:{borderColor:ctx2=>ctx2.p1.parsed.y<90?COLORS.danger:COLORS.primary}, pointRadius:0, tension:.3, borderWidth:2},
-      {label:'Umbral mínimo', data:labels.map(()=>90), borderColor:'#9CA3AF', borderDash:[5,5], pointRadius:0, borderWidth:1.5}
-    ]},
+  if(riesgoChartInstance) riesgoChartInstance.destroy();
+  riesgoChartInstance = new Chart(ctx,{
+    type:'bar',
+    data:{labels:riesgoLabels, datasets:[{data:riesgoData,
+      backgroundColor:[COLORS.success,COLORS.warning,COLORS.danger], borderRadius:6}]},
     options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{y:{min:75,max:100, grid:{color:COLORS.grid}, ticks:{callback:v=>v+'%'}}, x:{grid:{display:false}, ticks:{maxTicksLimit:8}}}}
+      scales:{y:{grid:{color:COLORS.grid}, ticks:{precision:0}}, x:{grid:{display:false}}}}
   });
 
-  const respLabels=[]; const respData=[]; const respColors=[];
-  for(let i=11;i>=0;i--){
-    respLabels.push(`Lote ${12-i}`);
-    const v = roundTo(1+rand()*3.5,1);
-    respData.push(v); respColors.push(v>3?COLORS.warning:COLORS.primary);
-  }
+  const porOrigen = m ? m.predicciones_por_origen : {};
+  const origenLabels = ['individual','lote'];
+  const origenData = origenLabels.map(l=>porOrigen[l] || 0);
   const ctx2 = document.getElementById('responseChart').getContext('2d');
-  if(responseChartInstance) responseChartInstance.destroy();
-  responseChartInstance = new Chart(ctx2,{
+  if(origenChartInstance) origenChartInstance.destroy();
+  origenChartInstance = new Chart(ctx2,{
     type:'bar',
-    data:{labels:respLabels, datasets:[{data:respData, backgroundColor:respColors, borderRadius:6}]},
-    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},
-      tooltip:{callbacks:{label:(c)=>`${c.parsed.y}s — ${randInt(200,1800)} registros`}}},
-      scales:{y:{grid:{color:COLORS.grid}, ticks:{callback:v=>v+'s'}}, x:{grid:{display:false}}}}
+    data:{labels:['Predicción individual','Carga de CSV'], datasets:[{data:origenData, backgroundColor:COLORS.primary, borderRadius:6}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:COLORS.grid}, ticks:{precision:0}}, x:{grid:{display:false}}}}
   });
 }
 
@@ -1787,7 +1967,9 @@ function doExportHistory(type){
 /* =========================================================================================
    INICIALIZACIÓN GENERAL
    ========================================================================================= */
-document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await cargarHistorialReal();
+  await cargarMonitoreoReal();
   renderDashboardKPIs();
   renderRecentAlerts();
   renderDashboardTable();
