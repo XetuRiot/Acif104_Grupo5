@@ -20,6 +20,8 @@ pip install fastapi "uvicorn[standard]" joblib
 > Si falla por la línea `prefix:` del `environment.yml`, bórrala y vuelve a intentar.
 
 ## 2. Entrenar el modelo
+comando'cd Acif104_Grupo5
+jupyter notebook notebooks/Sumativa.ipynb'
 
 Abrir `notebooks/Sumativa.ipynb` con el kernel del entorno `ml` y ejecutar todas las celdas (**Run All**). Al terminar quedan generados `modelo_xgboost.pkl`, `scaler.pkl` y `columnas.pkl` en `modelos/`.
 
