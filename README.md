@@ -4,6 +4,8 @@ Proyecto para la asignatura **Aprendizaje de Máquina (ACIF104)** — Universida
 
 **Repositorio:** https://github.com/XetuRiot/Acif104_Grupo5
 
+comando de clonacion git clone 'https://github.com/XetuRiot/Acif104_Grupo5'
+
 ## Integrantes
 
 Javiera Chávez · Joaquín Olivares · Claudio Yáñez
@@ -20,7 +22,7 @@ pip install fastapi "uvicorn[standard]" joblib
 > Si falla por la línea `prefix:` del `environment.yml`, bórrala y vuelve a intentar.
 
 ## 2. Entrenar el modelo
-comando'cd Acif104_Grupo5
+comando 'cd Acif104_Grupo5
 jupyter notebook notebooks/Sumativa.ipynb'
 
 Abrir `notebooks/Sumativa.ipynb` con el kernel del entorno `ml` y ejecutar todas las celdas (**Run All**). Al terminar quedan generados `modelo_xgboost.pkl`, `scaler.pkl` y `columnas.pkl` en `modelos/`.
@@ -39,6 +41,8 @@ Documentación interactiva en `http://127.0.0.1:8000/docs`, estado del servicio 
 ## 4. Abrir el frontend
 
 Con la API corriendo, abrir `frontend/index_1.html` (recomendado con la extensión **Live Server** de VS Code para evitar restricciones de `file://`). Todas las pantallas usan datos reales de la API.
+
+'se debe abrir el backend y el frontend en 2 terminales distintas para funcionar'
 
 ## 5. Reentrenar el modelo con datos nuevos
 
