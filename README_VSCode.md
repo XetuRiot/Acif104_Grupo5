@@ -1,4 +1,4 @@
-# Perfectime — Mantenimiento Predictivo de Equipos Industriales (Git Bash)
+# Perfectime — Mantenimiento Predictivo de Equipos Industriales (VS Code)
 
 Proyecto para la asignatura **Aprendizaje de Máquina (ACIF104)** — Universidad Andrés Bello.
 
@@ -8,16 +8,19 @@ Proyecto para la asignatura **Aprendizaje de Máquina (ACIF104)** — Universida
 
 Javiera Chávez · Joaquín Olivares · Claudio Yáñez
 
-> Esta guía es para ejecutar el proyecto desde terminales de **Git Bash**. Si trabajas en VS Code, usa [README_VSCode.md](README_VSCode.md).
+> Esta guía es para ejecutar el proyecto desde **VS Code**. Si prefieres terminales de Git Bash sueltas, usa [README.md](README.md).
 
-## 1. Clonar el repositorio
+## 1. Clonar el repositorio y abrirlo en VS Code
 
 ```bash
 git clone https://github.com/XetuRiot/Acif104_Grupo5
-cd Acif104_Grupo5
 ```
 
+Abrir la carpeta `Acif104_Grupo5` en VS Code (Archivo → Abrir carpeta).
+
 ## 2. Crear el entorno (una sola vez)
+
+En una terminal integrada (`Ctrl+ñ`):
 
 ```bash
 conda env create -f environment.yml
@@ -29,37 +32,26 @@ pip install fastapi "uvicorn[standard]" joblib
 
 ## 3. Entrenar el modelo (una sola vez)
 
-```bash
-jupyter nbconvert --to notebook --execute --inplace notebooks/Sumativa.ipynb
-```
+Abrir `notebooks/Sumativa.ipynb`, elegir el kernel `ml` (arriba a la derecha) y ejecutar **Run All**.
 
 Al terminar quedan generados `modelo_xgboost.pkl`, `scaler.pkl` y `columnas.pkl` en `modelos/`.
 
-> Para usar otro dataset, definir `PERFECTIME_DATASET_PATH` con la ruta del CSV antes de este paso. Si no se define, se usa `datasets/ai4i2020.csv`.
+> Para usar otro dataset, definir `PERFECTIME_DATASET_PATH` con la ruta del CSV antes de abrir el notebook. Si no se define, se usa `datasets/ai4i2020.csv`.
 
 ## 4. Levantar la API
 
-Abrir una terminal de Git Bash y activar el entorno:
+En una terminal integrada con el entorno `ml` activado:
 
 ```bash
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate ml
 cd backend
 uvicorn main:app --reload --port 8000
 ```
 
 ## 5. Levantar el frontend
 
-Abrir **otra** terminal de Git Bash, activar el entorno igual que en el paso 4, y correr:
+Clic derecho sobre `frontend/index_1.html` → **"Open with Live Server"**. Se abre en `http://127.0.0.1:5500/index_1.html`.
 
-```bash
-cd frontend
-python -m http.server 5500
-```
-
-Abrir en el navegador `http://127.0.0.1:5500/index_1.html`.
-
-> Si el puerto 5500 está ocupado, usar otro: `python -m http.server 5501`.
+> Live Server vigila toda la carpeta del proyecto, así que puede recargar la página automáticamente cuando el backend guarda una predicción nueva en `historial.db`, cortando la vista del resultado. Si pasa, basta con volver a mirar la pantalla (los datos ya quedaron guardados). Esto se puede evitar agregando `.vscode/settings.json` con `liveServer.settings.ignoreFiles` apuntando a `backend/**` y `**/*.db` (archivo local, no se sube al repo).
 
 El backend y el frontend deben quedar corriendo al mismo tiempo, en terminales distintas. Todas las pantallas usan datos reales de la API.
 
