@@ -1,0 +1,2 @@
+# Esta carpeta guarda los artefactos que genera el notebook (modelo_xgboost.pkl, scaler.pkl, columnas.pkl).
+# Los .pkl no se versionan (ver .gitignore); este archivo solo mantiene la carpeta en el repositorio.

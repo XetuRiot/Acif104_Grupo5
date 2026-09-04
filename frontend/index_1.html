@@ -1955,13 +1955,84 @@ document.querySelectorAll('.table-p thead th.sortable').forEach(th=>{
 
 document.getElementById('exportCsvBtn').addEventListener('click', ()=>doExportHistory('CSV'));
 document.getElementById('exportPdfBtn').addEventListener('click', ()=>doExportHistory('PDF'));
+// Devuelve las filas del historial ya filtradas/ordenadas tal como se ven en pantalla
+function historialParaExportar(){
+  const filtradas = typeof getFilteredHistory === 'function' ? getFilteredHistory() : HISTORY;
+  return filtradas.map(r=>({
+    ID: r.id,
+    Maquina: r.machine,
+    Fecha: fmtDate(r.date),
+    Origen: r.origin,
+    Prediccion: r.status,
+    'Probabilidad (%)': r.prob,
+    Confianza: r.confidence,
+    'Factor principal': r.factorPrincipal || ''
+  }));
+}
+
 function doExportHistory(type){
   closeAllDropdowns();
-  showToast('info', `Generando archivo ${type}...`);
-  setTimeout(()=>{
-    if(rand()>0.08){ showToast('success','Historial exportado correctamente.'); }
-    else { showToast('error','No se pudo generar el archivo de exportación.', true); }
-  }, 1000);
+  var filas = historialParaExportar();
+  if(!filas.length){ showToast('warning','No hay predicciones en el historial para exportar.'); return; }
+  var fecha = new Date().toISOString().slice(0,10);
+  var cols = Object.keys(filas[0]);
+
+  if(type === 'CSV'){
+    var comillas = function(v){ return '"' + String(v).split('"').join('""') + '"'; };
+    var lineas = [cols.join(',')];
+    filas.forEach(function(f){ lineas.push(cols.map(function(c){ return comillas(f[c]); }).join(',')); });
+    var csv = '﻿' + lineas.join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'historial_perfectime_' + fecha + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('success', 'Historial exportado (' + filas.length + ' registros).');
+    return;
+  }
+
+  // PDF: ventana imprimible construida con el DOM (sin cadenas de HTML)
+  var win = window.open('', '_blank');
+  if(!win){ showToast('error', 'El navegador bloqueo la ventana de exportacion.', true); return; }
+  var d = win.document;
+  d.title = 'Historial Perfectime - ' + fecha;
+  var style = d.createElement('style');
+  style.textContent = 'body{font-family:Arial,sans-serif;margin:32px;color:#1F2937}'
+    + 'h1{font-size:18px}p{font-size:12px;color:#6B7280}'
+    + 'table{border-collapse:collapse;width:100%;font-size:11px;margin-top:12px}'
+    + 'th,td{border:1px solid #CBD5E1;padding:6px 8px;text-align:left}'
+    + 'th{background:#1D6FE0;color:#fff}';
+  (d.head || d.documentElement).appendChild(style);
+
+  var h1 = d.createElement('h1');
+  h1.textContent = 'Historial de predicciones - Perfectime';
+  d.body.appendChild(h1);
+  var p = d.createElement('p');
+  p.textContent = 'Generado el ' + fmtDate(new Date()) + ' - ' + filas.length + ' registros';
+  d.body.appendChild(p);
+
+  var table = d.createElement('table');
+  var thead = d.createElement('thead');
+  var htr = d.createElement('tr');
+  cols.forEach(function(c){ var th = d.createElement('th'); th.textContent = c; htr.appendChild(th); });
+  thead.appendChild(htr);
+  table.appendChild(thead);
+  var tbody = d.createElement('tbody');
+  filas.forEach(function(f){
+    var tr = d.createElement('tr');
+    cols.forEach(function(c){ var td = d.createElement('td'); td.textContent = f[c]; tr.appendChild(td); });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  d.body.appendChild(table);
+
+  win.focus();
+  setTimeout(function(){ try { win.print(); } catch(e){} }, 300);
+  showToast('success', 'Vista de exportacion lista. Usa "Guardar como PDF".');
 }
 
 /* =========================================================================================
